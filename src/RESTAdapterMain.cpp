@@ -1270,6 +1270,7 @@ int main(int argc, char *argv[]) {
    mgr->InitializeEventRecord();
    mgr->InitializeRenderModification();
    mgr->InitializeAssessment();
+
    mgr->InitializeOperationalDescription();
    mgr->InitializeModuleConfiguration();
    mgr->InitializeStatus();
@@ -1283,6 +1284,10 @@ int main(int argc, char *argv[]) {
    mgr->CreatePhysiologyModificationPublisher();
    mgr->CreateSimulationControlPublisher();
    mgr->CreateCommandPublisher();
+
+   mgr->CreateOperationalDescriptionPublisher();
+   mgr->CreateModuleConfigurationPublisher();
+   mgr->CreateStatusPublisher();
 
    m_uuid.id(mgr->GenerateUuidString());
 
