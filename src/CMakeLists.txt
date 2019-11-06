@@ -14,5 +14,5 @@ target_link_libraries(amm_rest_adapter
    ${Boost_LIBRARIES}
    )
 
-install(TARGETS amm_rest_bridge RUNTIME DESTINATION bin)
+install(TARGETS amm_rest_adapter RUNTIME DESTINATION bin)
 install(DIRECTORY ../config DESTINATION bin)

@@ -326,7 +326,7 @@ database db("amm.db");
 void PublishOperationalDescription() {
    AMM::OperationalDescription od;
    od.name(moduleName);
-   od.model("REST Bridge");
+   od.model("REST Adapter");
    od.manufacturer("Vcom3D");
    od.serial_number("1.0.0");
    od.module_id(m_uuid);
