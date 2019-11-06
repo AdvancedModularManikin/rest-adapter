@@ -1,1 +1,1 @@
-# rest-adapter
+rest-bridge-module
