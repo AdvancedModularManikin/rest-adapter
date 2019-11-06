@@ -4,7 +4,7 @@
 
 cmake_minimum_required(VERSION 3.5.1)
 
-project("AMM_REST_Bridge")
+project("AMM_REST_Adapter")
 
 set(VERSION_TYPE "beta" CACHE STRING "version type" FORCE)
 set(PROJECT_VERSION_MAJOR, 1)
