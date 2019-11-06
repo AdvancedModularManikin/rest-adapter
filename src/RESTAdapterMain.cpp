@@ -1269,6 +1269,7 @@ int main(int argc, char *argv[]) {
    mgr->InitializeTick();
    mgr->InitializeEventRecord();
    mgr->InitializeRenderModification();
+   mgr->InitializePhysiologyModification();
    mgr->InitializeAssessment();
 
    mgr->InitializeOperationalDescription();
