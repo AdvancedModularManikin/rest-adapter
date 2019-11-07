@@ -445,8 +445,14 @@ void SendCommand(const std::string &command) {
          simControl.timestamp(ms);
          simControl.type(AMM::ControlType::RESET);
          mgr->WriteSimulationControl(simControl);
+      } else {
+         // Publish a SYS Command
+         AMM::Command cmdInstance;
+         cmdInstance.message(command);
+         mgr->WriteCommand(cmdInstance);
       }
    } else {
+      // Publish some other command?
       AMM::Command cmdInstance;
       cmdInstance.message(command);
       mgr->WriteCommand(cmdInstance);
