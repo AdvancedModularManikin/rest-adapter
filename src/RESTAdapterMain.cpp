@@ -1025,10 +1025,10 @@ private:
        writer.StartArray();
 
        db << "SELECT "
+             "module_capabilities.module_id,"
              "module_capabilities.module_name,"
              "events.source,"
              "events.topic,"
-             "events.tick,"
              "events.timestamp,"
              "events.data "
              "FROM "
@@ -1036,16 +1036,14 @@ private:
              "LEFT JOIN module_capabilities "
              "ON "
              "events.source = module_capabilities.module_guid" >>
-          [&](string module_name, string source, string topic, int64_t tick, int64_t timestamp,
-              string data) {
-
+          [&](string module_id, string module_name, string source, string topic, int64_t timestamp, string data) {
               writer.StartObject();
+              writer.Key("module_id");
+              writer.String(module_id.c_str());
               writer.Key("source");
               writer.String(module_name.c_str());
               writer.Key("module_guid");
               writer.String(source.c_str());
-              writer.Key("tick");
-              writer.Uint64(tick);
               writer.Key("timestamp");
               writer.Uint64(timestamp);
               writer.Key("topic");
