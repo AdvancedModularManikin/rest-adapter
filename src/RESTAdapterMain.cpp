@@ -1025,8 +1025,8 @@ private:
        writer.StartArray();
 
        db << "SELECT "
-             "module_capabilities.module_id,"
-             "module_capabilities.module_name,"
+             "module_capabilities.module_id as module_id,"
+             "module_capabilities.module_name as module_name,"
              "events.source,"
              "events.topic,"
              "events.timestamp,"
