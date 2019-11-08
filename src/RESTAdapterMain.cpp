@@ -33,16 +33,19 @@ using namespace eprosima;
 using namespace eprosima::fastrtps;
 using namespace sqlite;
 
-// REST adapter port
+/// REST adapter port.
 int portNumber = 9080;
 
-// REST threads
+/// REST threads.
 int thr = 2;
 
-// Daemonize by default
+/// Daemonize by default.
 int daemonize = 1;
+
+/// Default discovery.
 int discovery = 1;
 
+/// Hostname to connect to.
 char hostname[HOST_NAME_MAX];
 
 std::string action_path = "Actions/";
@@ -70,6 +73,7 @@ const string actPrefix = "[ACT]";
 const string loadScenarioPrefix = "LOAD_SCENARIO:";
 const string loadPrefix = "LOAD_STATE:";
 
+/// Resets database tables for labs.
 void ResetLabs() {
    labsStorage.clear();
    std::ostringstream labRow;
@@ -157,6 +161,7 @@ void ResetLabs() {
    labsStorage.push_back(labRow.str());
 }
 
+/// Add to database tables for labs.
 void AppendLabRow() {
    std::ostringstream labRow;
 
@@ -243,6 +248,7 @@ void AppendLabRow() {
    labsStorage.push_back(labRow.str());
 }
 
+/// Core logic container for DDS Manager functions.
 class AMMListener {
 public:
     /**
