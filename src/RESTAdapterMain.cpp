@@ -451,6 +451,12 @@ void SendCommand(const std::string &command) {
          simControl.timestamp(ms);
          simControl.type(AMM::ControlType::RESET);
          mgr->WriteSimulationControl(simControl);
+      } else if (value.compare("SAVE_SIM") == 0) {
+         AMM::SimulationControl simControl;
+         auto ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+         simControl.timestamp(ms);
+         simControl.type(AMM::ControlType::SAVE);
+         mgr->WriteSimulationControl(simControl);
       } else {
          // Publish a SYS Command
          AMM::Command cmdInstance;
