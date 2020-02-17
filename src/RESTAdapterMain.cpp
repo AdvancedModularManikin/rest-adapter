@@ -260,19 +260,19 @@ public:
                   << st.capability() << "] Status = " << statusValue.str() << " (" << st.value() << ")";
 
         if (st.module_name() == "AMM_FluidManager" && st.capability() == "") {
-            statusStorage["FLUIDICS_STATE"] = st.value();
+            statusStorage["FLUIDICS_STATE"] = statusValue.str();
         }
 
         if (st.module_name() == "AMM_FluidManager" && st.capability() == "clear_supply") {
-            statusStorage["CLEAR_SUPPLY"] = st.value();
+            statusStorage["CLEAR_SUPPLY"] = statusValue.str();
         }
 
         if (st.module_name() == "AMM_FluidManager" && st.capability() == "blood_supply") {
-            statusStorage["BLOOD_SUPPLY"] = st.value();
+            statusStorage["BLOOD_SUPPLY"] = statusValue.str();
         }
 
         if (st.capability() == "iv_detection") {
-            statusStorage["IVARM_STATE"] = st.value();
+            statusStorage["IVARM_STATE"] = statusValue.str();
         }
     }
 
