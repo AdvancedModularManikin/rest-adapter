@@ -257,22 +257,22 @@ public:
         statusValue << AMM::Utility::EStatusValueStr(st.value());
 
         LOG_DEBUG << "[" << st.module_id().id() << "][" << st.module_name() << "]["
-                  << st.capability() << "] Status = " << statusValue.str();
+                  << st.capability() << "] Status = " << statusValue.str() << " (" << st.value() << ")";
 
         if (st.module_name() == "AMM_FluidManager" && st.capability() == "") {
-            statusStorage["FLUIDICS_STATE"] = statusValue.str();
+            statusStorage["FLUIDICS_STATE"] = st.value();
         }
 
         if (st.module_name() == "AMM_FluidManager" && st.capability() == "clear_supply") {
-            statusStorage["CLEAR_SUPPLY"] = statusValue.str();
+            statusStorage["CLEAR_SUPPLY"] = st.value();
         }
 
         if (st.module_name() == "AMM_FluidManager" && st.capability() == "blood_supply") {
-            statusStorage["BLOOD_SUPPLY"] = statusValue.str();
+            statusStorage["BLOOD_SUPPLY"] = st.value();
         }
 
         if (st.capability() == "iv_detection") {
-            statusStorage["IVARM_STATE"] = statusValue.str();
+            statusStorage["IVARM_STATE"] = st.value();
         }
     }
 
