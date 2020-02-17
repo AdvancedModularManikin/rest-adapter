@@ -251,11 +251,10 @@ void AppendLabRow() {
 /// Core logic container for DDS Manager functions.
 class AMMListener {
 public:
-    /**
 
      void onNewStatus(AMM::Status &st, SampleInfo_t *info) {
         ostringstream statusValue;
-        statusValue << st.status_value();
+        statusValue << AMM::Utility::EStatusValueStr(st.value());
 
         LOG_DEBUG << "[" << st.module_id() << "][" << st.module_name() << "]["
                   << st.capability() << "] Status = " << statusValue.str();
@@ -276,7 +275,6 @@ public:
             statusStorage["IVARM_STATE"] = statusValue.str();
         }
     }
-    **/
 
     void onNewTick(AMM::Tick &t, SampleInfo_t *info) {
        if (statusStorage["STATUS"].compare("NOT RUNNING") == 0 &&
@@ -1295,6 +1293,7 @@ int main(int argc, char *argv[]) {
    mgr->CreateTickSubscriber(&al, &AMMListener::onNewTick);
    mgr->CreatePhysiologyValueSubscriber(&al, &AMMListener::onNewPhysiologyValue);
    mgr->CreateCommandSubscriber(&al, &AMMListener::onNewCommand);
+   mgr->CreateStatusSubscriber(&al, &AMMListener::onNewStatus);
 
    mgr->CreateAssessmentPublisher();
    mgr->CreateRenderModificationPublisher();
