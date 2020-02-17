@@ -256,7 +256,7 @@ public:
         ostringstream statusValue;
         statusValue << AMM::Utility::EStatusValueStr(st.value());
 
-        LOG_DEBUG << "[" << st.module_id() << "][" << st.module_name() << "]["
+        LOG_DEBUG << "[" << st.module_id().id() << "][" << st.module_name() << "]["
                   << st.capability() << "] Status = " << statusValue.str();
 
         if (st.module_name() == "AMM_FluidManager" && st.capability() == "") {
