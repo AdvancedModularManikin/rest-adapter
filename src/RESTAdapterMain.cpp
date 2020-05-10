@@ -252,28 +252,28 @@ void AppendLabRow() {
 class AMMListener {
 public:
 
-     void onNewStatus(AMM::Status &st, SampleInfo_t *info) {
-        ostringstream statusValue;
-        statusValue << AMM::Utility::EStatusValueStr(st.value());
+    void onNewStatus(AMM::Status &st, SampleInfo_t *info) {
+       ostringstream statusValue;
+       statusValue << AMM::Utility::EStatusValueStr(st.value());
 
-        LOG_DEBUG << "[" << st.module_id().id() << "][" << st.module_name() << "]["
-                  << st.capability() << "] Status = " << statusValue.str() << " (" << st.value() << ")";
+       LOG_DEBUG << "[" << st.module_id().id() << "][" << st.module_name() << "]["
+                 << st.capability() << "] Status = " << statusValue.str() << " (" << st.value() << ")";
 
-        if (st.module_name() == "AMM_FluidManager" && st.capability() == "") {
-            statusStorage["FLUIDICS_STATE"] = statusValue.str();
-        }
+       if (st.module_name() == "AMM_FluidManager" && st.capability() == "") {
+          statusStorage["FLUIDICS_STATE"] = statusValue.str();
+       }
 
-        if (st.module_name() == "AMM_FluidManager" && st.capability() == "clear_supply") {
-            statusStorage["CLEAR_SUPPLY"] = statusValue.str();
-        }
+       if (st.module_name() == "AMM_FluidManager" && st.capability() == "clear_supply") {
+          statusStorage["CLEAR_SUPPLY"] = statusValue.str();
+       }
 
-        if (st.module_name() == "AMM_FluidManager" && st.capability() == "blood_supply") {
-            statusStorage["BLOOD_SUPPLY"] = statusValue.str();
-        }
+       if (st.module_name() == "AMM_FluidManager" && st.capability() == "blood_supply") {
+          statusStorage["BLOOD_SUPPLY"] = statusValue.str();
+       }
 
-        if (st.capability() == "iv_detection") {
-            statusStorage["IVARM_STATE"] = statusValue.str();
-        }
+       if (st.capability() == "iv_detection") {
+          statusStorage["IVARM_STATE"] = statusValue.str();
+       }
     }
 
     void onNewTick(AMM::Tick &t, SampleInfo_t *info) {
@@ -613,18 +613,23 @@ private:
        if (exists(state_path) && is_directory(state_path)) {
           path p(state_path);
           if (is_directory(p)) {
-             directory_iterator end_iter;
-             for (directory_iterator dir_itr(p); dir_itr != end_iter; ++dir_itr) {
-                if (is_regular_file(dir_itr->status())) {
-                   writer.StartObject();
-                   writer.Key("name");
-                   writer.String(dir_itr->path().filename().c_str());
-                   writer.Key("description");
-                   stringstream writeTime;
-                   writeTime << last_write_time(dir_itr->path());
-                   writer.String(writeTime.str().c_str());
-                   writer.EndObject();
-                }
+
+
+             typedef vector <path> vec;             // store paths,
+             vec v;                                // so we can sort them later
+
+             copy(directory_iterator(p), directory_iterator(), back_inserter(v));
+
+             sort(v.begin(), v.end());             // sort, since directory iteration
+             // is not ordered on some file systems
+
+             for (vec::const_iterator it(v.begin()), it_end(v.end()); it != it_end; ++it) {
+                std::ostringstream fn;
+                fn << *it;
+                writer.StartObject();
+                writer.Key("name");
+                writer.String(fn.str().c_str());
+                writer.EndObject();
              }
           }
        }
@@ -1251,7 +1256,7 @@ Address addr(Ipv4::any(), port);
 DDSEndpoint server(addr);
 
 int main(int argc, char *argv[]) {
-   static plog::ColorConsoleAppender<plog::TxtFormatter> consoleAppender;
+   static plog::ColorConsoleAppender <plog::TxtFormatter> consoleAppender;
    plog::init(plog::verbose, &consoleAppender);
 
    for (int i = 1; i < argc; ++i) {
