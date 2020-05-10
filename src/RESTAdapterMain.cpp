@@ -613,22 +613,18 @@ private:
        if (exists(state_path) && is_directory(state_path)) {
           path p(state_path);
           if (is_directory(p)) {
-
-
-             typedef vector <path> vec;             // store paths,
-             vec v;                                // so we can sort them later
-
-             copy(directory_iterator(p), directory_iterator(), back_inserter(v));
-
-             sort(v.begin(), v.end());             // sort, since directory iteration
-             // is not ordered on some file systems
-
-             for (vec::const_iterator it(v.begin()), it_end(v.end()); it != it_end; ++it) {
-                std::ostringstream fn;
-                fn << *it;
+             std::vector<boost::filesystem::path> paths(
+                boost::filesystem::directory_iterator{state_path}, boost::filesystem::directory_iterator{}
+             );
+             std::sort(paths.begin(), paths.end());
+             for (auto const &path : paths) {
                 writer.StartObject();
                 writer.Key("name");
-                writer.String(fn.str().c_str());
+                writer.String(path.filename().c_str());
+                writer.Key("last_updated");
+                stringstream writeTime;
+                writeTime << last_write_time(path);
+                writer.String(writeTime.str().c_str());
                 writer.EndObject();
              }
           }
@@ -1256,7 +1252,7 @@ Address addr(Ipv4::any(), port);
 DDSEndpoint server(addr);
 
 int main(int argc, char *argv[]) {
-   static plog::ColorConsoleAppender <plog::TxtFormatter> consoleAppender;
+   static plog::ColorConsoleAppender<plog::TxtFormatter> consoleAppender;
    plog::init(plog::verbose, &consoleAppender);
 
    for (int i = 1; i < argc; ++i) {
