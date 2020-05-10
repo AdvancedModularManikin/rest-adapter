@@ -1,5 +1,4 @@
 
-
 #include <mutex>
 #include <chrono>
 #include <thread>
@@ -72,6 +71,8 @@ const string sysPrefix = "[SYS]";
 const string actPrefix = "[ACT]";
 const string loadScenarioPrefix = "LOAD_SCENARIO:";
 const string loadPrefix = "LOAD_STATE:";
+
+void SendReset();
 
 /// Resets database tables for labs.
 void ResetLabs() {
@@ -307,11 +308,7 @@ public:
 
           } else if (!value.compare(0, loadPrefix.size(), loadPrefix)) {
              statusStorage["STATE"] = value.substr(loadPrefix.size());
-             AMM::SimulationControl simControl;
-             auto ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-             simControl.timestamp(ms);
-             simControl.type(AMM::ControlType::RESET);
-             mgr->WriteSimulationControl(simControl);
+             SendReset();
           } else if (!value.compare(0, loadScenarioPrefix.size(),
                                     loadScenarioPrefix)) {
              statusStorage["SCENARIO"] = value.substr(loadScenarioPrefix.size());
@@ -331,6 +328,14 @@ const std::string configFile = "config/rest_adapter_amm.xml";
 AMM::DDSManager<AMMListener> *mgr = new AMM::DDSManager<AMMListener>(configFile);
 AMM::UUID m_uuid;
 database db("amm.db");
+
+void SendReset() {
+   AMM::SimulationControl simControl;
+   auto ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+   simControl.timestamp(ms);
+   simControl.type(AMM::ControlType::RESET);
+   mgr->WriteSimulationControl(simControl);
+}
 
 void PublishOperationalDescription() {
    AMM::OperationalDescription od;
