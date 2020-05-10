@@ -307,6 +307,11 @@ public:
 
           } else if (!value.compare(0, loadPrefix.size(), loadPrefix)) {
              statusStorage["STATE"] = value.substr(loadPrefix.size());
+             AMM::SimulationControl simControl;
+             auto ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+             simControl.timestamp(ms);
+             simControl.type(AMM::ControlType::RESET);
+             mgr->WriteSimulationControl(simControl);
           } else if (!value.compare(0, loadScenarioPrefix.size(),
                                     loadScenarioPrefix)) {
              statusStorage["SCENARIO"] = value.substr(loadScenarioPrefix.size());
