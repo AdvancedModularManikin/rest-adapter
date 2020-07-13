@@ -717,12 +717,12 @@ private:
     }
 
     int writeToFile(const string & filename, const string & data) {
-        std::ofstream out;
+        std::fstream out;
 
         LOG_INFO << "Opening " << filename << " for writing.";
         try {
-            out.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
-            if (outfile.fail()) {
+            out.open(filename.c_str(), std::fstream::in | std::fstream::out | std::fstream::trunc);
+            if (out.fail()) {
                 LOG_ERROR << "Open failure: " << strerror(errno);
                 return 0;
             }
