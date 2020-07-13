@@ -727,11 +727,12 @@ private:
                       Http::ResponseWriter response) {
         auto name = request.param(":name").as<std::string>();
         if (name.empty()) {
+            LOG_INFO << "Name was empty";
             name = "test.csv";
         }
 
         std::string filename = "assesments/" + name;
-        LOG_INFO << "Create an assessment from a POST.";
+        LOG_INFO << "Create an assessment from a POST.  Filename is " << filename;
         auto s = std::chrono::steady_clock::now();
         writeToFile(filename, request.body());
         auto dt = std::chrono::steady_clock::now() - s;
