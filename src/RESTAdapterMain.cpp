@@ -745,7 +745,10 @@ private:
     }
 
     void getAssessment(const Rest::Request &request, Http::ResponseWriter response) {
-        auto name = request.param(":name").as<std::string>();
+        std::string name = request.param(":name").as<std::string>();
+        std::string fileName = "assessments/" + name;
+        LOG_INFO << "Recieved a request to GET an assessment file, so we're serving this up: " fileName;
+        Http::serveFile(response, fileName.c_str());
     }
 
 
