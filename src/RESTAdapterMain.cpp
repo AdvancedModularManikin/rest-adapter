@@ -467,9 +467,9 @@ void SendCommand(const std::string &command) {
          mgr->WriteSimulationControl(simControl);
       } else {
          // Publish a SYS Command
-         AMM::Command cmdInstance;
-         cmdInstance.message(command);
-         mgr->WriteCommand(cmdInstance);
+          AMM::Command cmdInstance;
+          cmdInstance.message(command);
+          mgr->WriteCommand(cmdInstance);
       }
    } else {
       // Publish some other command?
@@ -497,6 +497,7 @@ namespace Generic {
 }
 
 class DDSEndpoint {
+    static constexpr size_t DefaultMaxPayload = 1024102410;
 
 public:
     explicit DDSEndpoint(Address addr)
@@ -505,8 +506,7 @@ public:
     void init(int thr = 2) {
        auto opts = Http::Endpoint::options()
           .threads(thr)
-          .flags(Tcp::Options::ReuseAddr)
-          .maxPayload(65536);
+          .flags(Tcp::Options::ReuseAddr);
        httpEndpoint->init(opts);
        setupRoutes();
     }
@@ -568,6 +568,17 @@ private:
                    Routes::bind(&DDSEndpoint::updateAction, this));
        Routes::Delete(router, "/action/:name",
                       Routes::bind(&DDSEndpoint::deleteAction, this));
+
+        Routes::Get(router, "/assessments",
+                    Routes::bind(&DDSEndpoint::getAssessments, this));
+        Routes::Get(router, "/assessment/:name",
+                    Routes::bind(&DDSEndpoint::getAssessment, this));
+        Routes::Post(router, "/assessment",
+                     Routes::bind(&DDSEndpoint::createAssessment, this));
+        Routes::Put(router, "/assessment",
+                     Routes::bind(&DDSEndpoint::createAssessment, this));
+        Routes::Delete(router, "/assessment/:name",
+                       Routes::bind(&DDSEndpoint::deleteAssessment, this));
 
        Routes::Post(router, "/execute",
                     Routes::bind(&DDSEndpoint::executeCommand, this));
@@ -699,6 +710,45 @@ private:
        response.send(Pistache::Http::Code::Ok, s.GetString(),
                      MIME(Application, Json));
     }
+
+    void getAssessments(const Rest::Request &request, Http::ResponseWriter response) {
+        LOG_INFO << "Get a list of all assessment CSVs";
+
+    }
+
+    void writeToFile(const string & filename, const string & data) {
+        std::ofstream out;
+        out.open(filename.c_str());
+        out << data ;
+        out.close();
+    }
+
+    void createAssessment(const Rest::Request &request,
+                      Http::ResponseWriter response) {
+        LOG_INFO << "Create an assessment from a POST.";
+        auto s = std::chrono::steady_clock::now();
+        writeToFile("assessments/test.csv", request.body());
+        auto dt = std::chrono::steady_clock::now() - s;
+        LOG_INFO << "File upload processed in: " << std::chrono::duration_cast<std::chrono::microseconds>(dt).count()<< endl;
+        response.send(Http::Code::Ok);
+
+        LOG_INFO << "Sending out system message that there's an assessment available.";
+        std::string command = "[SYS]ASSESSMENT_AVAILABLE:test.csv";
+        AMM::Command cmdInstance;
+        cmdInstance.message(command);
+        mgr->WriteCommand(cmdInstance);
+    }
+
+    void deleteAssessment(const Rest::Request &request,
+                      Http::ResponseWriter response) {
+        auto name = request.param(":name").as<std::string>();
+    }
+
+    void getAssessment(const Rest::Request &request, Http::ResponseWriter response) {
+        auto name = request.param(":name").as<std::string>();
+    }
+
+
 
     void getActions(const Rest::Request &request, Http::ResponseWriter response) {
        StringBuffer s;
