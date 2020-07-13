@@ -752,7 +752,7 @@ private:
             name = "test.csv";
         }
 
-        std::string filename = "assesments/" + name;
+        std::string filename = "/usr/local/bin/assesments/" + name;
         LOG_INFO << "Create an assessment from a POST.  Filename is " << filename;
         auto s = std::chrono::steady_clock::now();
         writeToFile(filename, request.body());
