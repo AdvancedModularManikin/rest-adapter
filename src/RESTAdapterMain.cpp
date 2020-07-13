@@ -721,25 +721,22 @@ private:
 
         out.open(filename, std::fstream::in | std::fstream::out | std::fstream::trunc);
 
+        LOG_INFO << "Writing to " << filename;
+
         // If file does not exist, Create new file
         if (!out)
         {
             LOG_WARNING << "Cannot open file, file does not exist. Creating new file.";
             out.open(filename);
-            if (out.fail()) {
-                LOG_ERROR << "open failure: " << strerror(errno);
-            }
-            out << data;
-            out.close();
         }
-        else
-        {    // use existing file
-            LOG_INFO << "Success " << filename << " found.";
-            LOG_INFO << "Appending writing and working with existing file";
-            out << data;
-            out.close();
-            LOG_INFO << "Closed";
+
+        if (out.fail()) {
+            LOG_ERROR << "Open failure: " << strerror(errno);
+            return -1;
         }
+
+        out << data;
+        out.close();
 
         LOG_INFO << "All done";
     }
@@ -752,7 +749,7 @@ private:
             name = "test.csv";
         }
 
-        std::string filename = "/usr/local/bin/assesments/" + name;
+        std::string filename = "assessments/" + name;
         LOG_INFO << "Create an assessment from a POST.  Filename is " << filename;
         auto s = std::chrono::steady_clock::now();
         writeToFile(filename, request.body());
