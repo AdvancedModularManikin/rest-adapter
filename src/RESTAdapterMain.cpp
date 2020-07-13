@@ -719,20 +719,28 @@ private:
     int writeToFile(const string & filename, const string & data) {
         std::fstream out;
 
-        LOG_INFO << "Opening " << filename << " for writing.";
-        try {
-            out.open(filename.c_str(), std::fstream::in | std::fstream::out | std::fstream::trunc);
+        out.open(filename, std::fstream::in | std::fstream::out | std::fstream::trunc);
+
+        // If file does not exist, Create new file
+        if (!out)
+        {
+            LOG_WARNING << "Cannot open file, file does not exist. Creating new file.";
+            out.open(filename);
             if (out.fail()) {
-                LOG_ERROR << "Open failure: " << strerror(errno);
-                return 0;
+                LOG_ERROR << "open failure: " << strerror(errno);
             }
             out << data;
-        } catch (std::exception const &e) {
-            LOG_ERROR << "Uncaught Exception: " << e.what();
+            out.close();
+        }
+        else
+        {    // use existing file
+            LOG_INFO << "Success " << filename << " found.";
+            LOG_INFO << "Appending writing and working with existing file";
+            out << data;
+            out.close();
+            LOG_INFO << "Closed";
         }
 
-        LOG_INFO << "File written, closing up.";
-        out.close();
         LOG_INFO << "All done";
     }
 
