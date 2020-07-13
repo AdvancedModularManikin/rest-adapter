@@ -573,9 +573,9 @@ private:
                     Routes::bind(&DDSEndpoint::getAssessments, this));
         Routes::Get(router, "/assessment/:name",
                     Routes::bind(&DDSEndpoint::getAssessment, this));
-        Routes::Post(router, "/assessment",
+        Routes::Post(router, "/assessment/:name",
                      Routes::bind(&DDSEndpoint::createAssessment, this));
-        Routes::Put(router, "/assessment",
+        Routes::Put(router, "/assessment/:name",
                      Routes::bind(&DDSEndpoint::createAssessment, this));
         Routes::Delete(router, "/assessment/:name",
                        Routes::bind(&DDSEndpoint::deleteAssessment, this));
