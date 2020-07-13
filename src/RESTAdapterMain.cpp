@@ -725,15 +725,21 @@ private:
 
     void createAssessment(const Rest::Request &request,
                       Http::ResponseWriter response) {
+        auto name = request.param(":name").as<std::string>();
+        if (name.empty()) {
+            name = "test.csv";
+        }
+
+        std::string filename = "assesments/" + name;
         LOG_INFO << "Create an assessment from a POST.";
         auto s = std::chrono::steady_clock::now();
-        writeToFile("assessments/test.csv", request.body());
+        writeToFile(filename, request.body());
         auto dt = std::chrono::steady_clock::now() - s;
         LOG_INFO << "File upload processed in: " << std::chrono::duration_cast<std::chrono::microseconds>(dt).count()<< endl;
         response.send(Http::Code::Ok);
 
         LOG_INFO << "Sending out system message that there's an assessment available.";
-        std::string command = "[SYS]ASSESSMENT_AVAILABLE:test.csv";
+        std::string command = "[SYS]ASSESSMENT_AVAILABLE:" + name;
         AMM::Command cmdInstance;
         cmdInstance.message(command);
         mgr->WriteCommand(cmdInstance);
