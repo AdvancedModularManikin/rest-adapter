@@ -716,11 +716,24 @@ private:
 
     }
 
-    void writeToFile(const string & filename, const string & data) {
+    int writeToFile(const string & filename, const string & data) {
         std::ofstream out;
-        out.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
-        out << data ;
+
+        LOG_INFO << "Opening " << filename << " for writing.";
+        try {
+            out.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
+            if (outfile.fail()) {
+                LOG_ERROR << "Open failure: " << strerror(errno);
+                return 0;
+            }
+            out << data;
+        } catch (std::exception const &e) {
+            LOG_ERROR << "Uncaught Exception: " << e.what();
+        }
+
+        LOG_INFO << "File written, closing up.";
         out.close();
+        LOG_INFO << "All done";
     }
 
     void createAssessment(const Rest::Request &request,
