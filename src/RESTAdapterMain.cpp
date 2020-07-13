@@ -718,7 +718,7 @@ private:
 
     void writeToFile(const string & filename, const string & data) {
         std::ofstream out;
-        out.open(filename.c_str());
+        out.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
         out << data ;
         out.close();
     }
