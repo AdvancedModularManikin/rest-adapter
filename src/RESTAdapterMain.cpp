@@ -71,6 +71,7 @@ const string sysPrefix = "[SYS]";
 const string actPrefix = "[ACT]";
 const string loadScenarioPrefix = "LOAD_SCENARIO:";
 const string loadPrefix = "LOAD_STATE:";
+const string loadPatientPrefix = "LOAD_PATIENT:";
 
 void SendReset();
 
@@ -312,7 +313,10 @@ public:
           } else if (!value.compare(0, loadScenarioPrefix.size(),
                                     loadScenarioPrefix)) {
              statusStorage["SCENARIO"] = value.substr(loadScenarioPrefix.size());
-          }
+          } else if (!value.compare(0, loadPatientPrefix.size(),
+                                     loadPatientPrefix)) {
+           statusStorage["PATIENT"] = value.substr(loadPatientPrefix.size());
+            }
        }
     }
 
