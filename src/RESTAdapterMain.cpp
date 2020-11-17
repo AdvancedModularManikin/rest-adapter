@@ -50,6 +50,7 @@ char hostname[HOST_NAME_MAX];
 std::string action_path = "Actions/";
 std::string state_path = "./states/";
 std::string patient_path = "./patients/";
+std::string scenario_path = "./Scenarios/";
 
 std::map<std::string, double> nodeDataStorage;
 
@@ -70,6 +71,7 @@ int64_t lastTick = 0;
 const string sysPrefix = "[SYS]";
 const string actPrefix = "[ACT]";
 const string loadScenarioPrefix = "LOAD_SCENARIO:";
+const string loadScenarioFilePrefix = "LOAD_SCENARIOFILE:";
 const string loadPrefix = "LOAD_STATE:";
 const string loadPatientPrefix = "LOAD_PATIENT:";
 
@@ -603,6 +605,9 @@ private:
        Routes::Get(router, "/patients",
                    Routes::bind(&DDSEndpoint::getPatients, this));
 
+        Routes::Get(router, "/scenarios",
+                    Routes::bind(&DDSEndpoint::getScenarios, this));
+
        Routes::Get(router, "/states", Routes::bind(&DDSEndpoint::getStates, this));
        Routes::Get(router, "/states/:name/delete",
                    Routes::bind(&DDSEndpoint::deleteState, this));
@@ -682,6 +687,37 @@ private:
                         "Can not delete default state file",
                         MIME(Application, Json));
        }
+    }
+
+    void getScenarios(const Rest::Request &request,
+                     Http::ResponseWriter response) {
+        StringBuffer s;
+        Writer<StringBuffer> writer(s);
+
+        writer.StartArray();
+        if (exists(scenario_path) && is_directory(scenario_path)) {
+            path p(scenario_path);
+            if (is_directory(p)) {
+                directory_iterator end_iter;
+                for (directory_iterator dir_itr(p); dir_itr != end_iter; ++dir_itr) {
+                    if (is_regular_file(dir_itr->status())) {
+                        writer.StartObject();
+                        writer.Key("name");
+                        writer.String(dir_itr->path().filename().c_str());
+                        writer.Key("description");
+                        stringstream writeTime;
+                        writeTime << last_write_time(dir_itr->path());
+                        writer.String(writeTime.str().c_str());
+                        writer.EndObject();
+                    }
+                }
+            }
+        }
+        writer.EndArray();
+
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+        response.send(Pistache::Http::Code::Ok, s.GetString(),
+                      MIME(Application, Json));
     }
 
     void getPatients(const Rest::Request &request,
