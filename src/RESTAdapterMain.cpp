@@ -5,6 +5,7 @@
 #include <iostream>
 #include <functional>
 #include <condition_variable>
+#include <stdexcept>
 
 #include "amm_std.h"
 
@@ -278,9 +279,12 @@ public:
               } else if ( st.capability() == "air_supply") {
                      statusStorage["AIR_SUPPLY"] = statusValue.str();
                      // parse st.message() to double p; [p] = psi
-                     double p = std::stod (st.message());
-                     if (!isnan(p)) {
-                            nodeDataStorage["AIR_PRESSURE"] = p;
+                     try {
+                        double p = std::stod(st.message());
+                        nodeDataStorage["AIR_PRESSURE"] = p;
+                     } catch (const std::invalid_argument &) {
+                        nodeDataStorage["AIR_PRESSURE"] = 0.0;
+                     } catch (const std::out_of_range &) {
                      }
               }
        }
@@ -290,16 +294,22 @@ public:
               if ( st.capability() == "battery-1" ) {
                      statusStorage["BATTERY1"] = statusValue.str();
                      // parse st.message() to double soc; [soc] = %
-                     double soc = std::stod (st.message());
-                     if (!isnan(soc)) {
+                     try {
+                        double soc = std::stod(st.message());
                         nodeDataStorage["Battery1_SOC"] = soc;
+                     } catch (const std::invalid_argument &) {
+                        nodeDataStorage["Battery1_SOC"] = 0.0;
+                     } catch (const std::out_of_range &) {
                      }
               } else if ( st.capability() == "battery-2" ) {
                      statusStorage["BATTERY2"] = statusValue.str();
                      // parse st.message() to double soc; [soc] = %
-                     double soc = std::stod (st.message());
-                     if (!isnan(soc)) {
+                     try {
+                        double soc = std::stod(st.message());
                         nodeDataStorage["Battery2_SOC"] = soc;
+                     } catch (const std::invalid_argument &) {
+                        nodeDataStorage["Battery2_SOC"] = 0.0;
+                     } catch (const std::out_of_range &) {
                      }
               } else if ( st.capability() == "ext_power" ) {
                      statusStorage["EXT_POWER"] = statusValue.str();
