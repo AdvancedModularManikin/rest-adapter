@@ -267,6 +267,7 @@ public:
 
        LOG_DEBUG << "[" << st.module_id().id() << "][" << st.module_name() << "]["
                  << st.capability() << "] Status = " << statusValue.str() << " (" << st.value() << ")";
+                     // Message = " << st.message();
 
        if ( st.module_name() == "AMM_FluidManager" || st.module_name() == "Torso_Control" )
        {
@@ -281,9 +282,9 @@ public:
                      // parse st.message() to double p; [p] = psi
                      try {
                         double p = std::stod(st.message());
-                        nodeDataStorage["AIR_PRESSURE"] = p;
+                        nodeDataStorage["Air_Pressure"] = p;
                      } catch (const std::invalid_argument &) {
-                        nodeDataStorage["AIR_PRESSURE"] = 0.0;
+                        nodeDataStorage["Air_Pressure"] = 0.0;
                      } catch (const std::out_of_range &) {
                      }
               }
