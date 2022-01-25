@@ -9,9 +9,9 @@
 
 #include "amm_std.h"
 
-#include "AMM/BaseLogger.h"
+#include "amm/BaseLogger.h"
 
-#include "AMM/Utility.h"
+#include "amm/Utility.h"
 
 #include <pistache/endpoint.h>
 #include <pistache/router.h>
