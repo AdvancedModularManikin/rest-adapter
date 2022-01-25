@@ -7,9 +7,9 @@ cmake_minimum_required(VERSION 3.5.1)
 project("AMM_REST_Adapter")
 
 set(VERSION_TYPE "beta" CACHE STRING "version type" FORCE)
-set(PROJECT_VERSION_MAJOR, 1)
-set(PROJECT_VERSION_MINOR, 0)
-set(PROJECT_VERSION_PATCH@, 0)
+set(PROJECT_VERSION_MAJOR 1)
+set(PROJECT_VERSION_MINOR 0)
+set(PROJECT_VERSION_PATCH 0)
 site_name(VERSION_HOST) # read hostname to VERSION_HOST
 set(VERSION_HOST "${VERSION_HOST}" CACHE STRING "host of build" FORCE)
 
@@ -78,3 +78,5 @@ message(STATUS "Output:               ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 message(STATUS "Compiler:             ${CMAKE_CXX_COMPILER}")
 message(STATUS "CMAKE_BUILD_TYPE:     ${CMAKE_BUILD_TYPE}")
 message(STATUS "")
+
+include(Packing)
