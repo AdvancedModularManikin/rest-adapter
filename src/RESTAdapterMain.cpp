@@ -8,9 +8,9 @@
 
 #include "amm_std.h"
 
-#include "AMM/BaseLogger.h"
+#include "amm/BaseLogger.h"
 
-#include "AMM/Utility.h"
+#include "amm/Utility.h"
 
 #include <pistache/endpoint.h>
 #include <pistache/router.h>
@@ -333,7 +333,18 @@ const std::string moduleName = "AMM_REST_Adapter";
 const std::string configFile = "config/rest_adapter_amm.xml";
 AMM::DDSManager<AMMListener> *mgr = new AMM::DDSManager<AMMListener>(configFile);
 AMM::UUID m_uuid;
-database db("amm.db");
+
+database connectToDB() {
+    try {
+        database db("amm.db");
+    } catch (std::exception &e) {
+        LOG_ERROR << "Unable to access sqlite database: " << e.what();
+        LOG_ERROR << "If the database does not yet exist, please run the amm_module_manager to create it.";
+    }
+    return db;
+}
+
+
 
 void SendReset() {
    AMM::SimulationControl simControl;
@@ -986,6 +997,7 @@ private:
        auto id = request.param(":id").as<std::string>();
        StringBuffer s;
        Writer<StringBuffer> writer(s);
+       database db = connectToDB();
        db << "SELECT "
              "module_id AS module_id,"
              "module_name AS module_name,"
@@ -1031,6 +1043,7 @@ private:
        auto guid = request.param(":guid").as<std::string>();
        StringBuffer s;
        Writer<StringBuffer> writer(s);
+        database db = connectToDB();
        db << "SELECT "
              "module_id AS module_id,"
              "module_guid as module_guid,"
@@ -1079,7 +1092,7 @@ private:
        int totalCount = 0;
        int coreCount = 0;
        int otherCount = 0;
-
+        database db = connectToDB();
        db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities" >> totalCount;
        db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities where module_name LIKE 'AMM_%'" >> coreCount;
 
@@ -1102,6 +1115,7 @@ private:
        StringBuffer s;
        Writer<StringBuffer> writer(s);
        writer.StartArray();
+        database db = connectToDB();
        db << "SELECT DISTINCT module_name FROM module_capabilities where module_name NOT LIKE 'AMM_%'"
           >> [&](string module_name) {
               writer.String(module_name.c_str());
@@ -1115,7 +1129,7 @@ private:
        StringBuffer s;
        Writer<StringBuffer> writer(s);
        writer.StartArray();
-
+        database db = connectToDB();
        db << "SELECT "
              "module_capabilities.module_id AS module_id,"
              "module_capabilities.module_name AS module_name,"
@@ -1162,7 +1176,7 @@ private:
        StringBuffer s;
        Writer<StringBuffer> writer(s);
        writer.StartArray();
-
+        database db = connectToDB();
        db << "SELECT "
              "module_capabilities.module_id as module_id,"
              "module_capabilities.module_name as module_name,"
@@ -1200,7 +1214,7 @@ private:
     void getEventLogCSV(const Rest::Request &request,
                         Http::ResponseWriter response) {
        std::ostringstream s;
-
+        database db = connectToDB();
        db << "SELECT "
              "module_capabilities.module_name,"
              "events.source,"
@@ -1233,7 +1247,7 @@ private:
        StringBuffer s;
        Writer<StringBuffer> writer(s);
        writer.StartArray();
-
+        database db = connectToDB();
        db << "SELECT "
              "logs.module_name, "
              "logs.module_guid, "
@@ -1270,7 +1284,7 @@ private:
     void getDiagnosticLogCSV(const Rest::Request &request,
                              Http::ResponseWriter response) {
        std::ostringstream s;
-
+        database db = connectToDB();
        db << "SELECT "
              "logs.module_name, "
              "logs.module_guid, "
@@ -1400,7 +1414,6 @@ int main(int argc, char *argv[]) {
    }
 
    string action;
-
 
    ResetLabs();
 
