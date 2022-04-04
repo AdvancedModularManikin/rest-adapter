@@ -12,6 +12,7 @@ _deps
 
 .idea/
 .vscode/
+*.geany
 
 build/
 build-*/

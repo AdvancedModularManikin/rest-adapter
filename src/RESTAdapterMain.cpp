@@ -5,6 +5,7 @@
 #include <iostream>
 #include <functional>
 #include <condition_variable>
+#include <stdexcept>
 
 #include "amm_std.h"
 
@@ -59,9 +60,13 @@ std::map<std::string, std::string> statusStorage = {{"STATUS",         "NOT RUNN
                                                     {"TIME",           "0"},
                                                     {"SCENARIO",       ""},
                                                     {"STATE",          ""},
+                                                    {"AIR_SUPPLY",     ""},
                                                     {"CLEAR_SUPPLY",   ""},
                                                     {"BLOOD_SUPPLY",   ""},
                                                     {"FLUIDICS_STATE", ""},
+                                                    {"BATTERY1",       ""},
+                                                    {"BATTERY2",       ""},
+                                                    {"EXT_POWER",      ""},
                                                     {"IVARM_STATE",    ""}};
 std::vector<std::string> labsStorage;
 
@@ -262,17 +267,54 @@ public:
 
        LOG_DEBUG << "[" << st.module_id().id() << "][" << st.module_name() << "]["
                  << st.capability() << "] Status = " << statusValue.str() << " (" << st.value() << ")";
+                     // Message = " << st.message();
 
-       if (st.module_name() == "AMM_FluidManager" && st.capability() == "") {
-          statusStorage["FLUIDICS_STATE"] = statusValue.str();
+       if ( st.module_name() == "AMM_FluidManager" || st.module_name() == "Torso_Control" )
+       {
+              if ( st.capability() == "fluidics" ) {
+                     statusStorage["FLUIDICS_STATE"] = statusValue.str();
+              } else if ( st.capability() == "clear_supply" ) {
+                     statusStorage["CLEAR_SUPPLY"] = statusValue.str();
+              } else if ( st.capability() == "blood_supply") {
+                     statusStorage["BLOOD_SUPPLY"] = statusValue.str();
+              } else if ( st.capability() == "air_supply") {
+                     statusStorage["AIR_SUPPLY"] = statusValue.str();
+                     // parse st.message() to double p; [p] = psi
+                     try {
+                        double p = std::stod(st.message());
+                        nodeDataStorage["Air_Pressure"] = p;
+                     } catch (const std::invalid_argument &) {
+                        nodeDataStorage["Air_Pressure"] = 0.0;
+                     } catch (const std::out_of_range &) {
+                     }
+              }
        }
 
-       if (st.module_name() == "AMM_FluidManager" && st.capability() == "clear_supply") {
-          statusStorage["CLEAR_SUPPLY"] = statusValue.str();
-       }
-
-       if (st.module_name() == "AMM_FluidManager" && st.capability() == "blood_supply") {
-          statusStorage["BLOOD_SUPPLY"] = statusValue.str();
+       if ( st.module_name() == "AJAMS_Services" )
+       {
+              if ( st.capability() == "battery-1" ) {
+                     statusStorage["BATTERY1"] = statusValue.str();
+                     // parse st.message() to double soc; [soc] = %
+                     try {
+                        double soc = std::stod(st.message());
+                        nodeDataStorage["Battery1_SOC"] = soc;
+                     } catch (const std::invalid_argument &) {
+                        nodeDataStorage["Battery1_SOC"] = 0.0;
+                     } catch (const std::out_of_range &) {
+                     }
+              } else if ( st.capability() == "battery-2" ) {
+                     statusStorage["BATTERY2"] = statusValue.str();
+                     // parse st.message() to double soc; [soc] = %
+                     try {
+                        double soc = std::stod(st.message());
+                        nodeDataStorage["Battery2_SOC"] = soc;
+                     } catch (const std::invalid_argument &) {
+                        nodeDataStorage["Battery2_SOC"] = 0.0;
+                     } catch (const std::out_of_range &) {
+                     }
+              } else if ( st.capability() == "ext_power" ) {
+                     statusStorage["EXT_POWER"] = statusValue.str();
+              }
        }
 
        if (st.capability() == "iv_detection") {
@@ -782,6 +824,7 @@ private:
         out.close();
 
         LOG_INFO << "All done";
+        return 0;
     }
 
     void createAssessment(const Rest::Request &request,
