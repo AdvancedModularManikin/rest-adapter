@@ -67,7 +67,14 @@ std::map<std::string, std::string> statusStorage = {{"STATUS",         "NOT RUNN
                                                     {"BATTERY1",       ""},
                                                     {"BATTERY2",       ""},
                                                     {"EXT_POWER",      ""},
-                                                    {"IVARM_STATE",    ""}};
+                                                    {"IVARM_STATE",    ""},
+                                                    {"MONITOR_ECG",     ""},
+                                                    {"MONITOR_PULSEOX", ""},
+                                                    {"MONITOR_NIBP",    ""},
+                                                    {"MONITOR_TEMP",    ""},
+                                                    {"MONITOR_ARTLINE", ""},
+                                                    {"MONITOR_ETCO2",   ""},
+                                                   };
 std::vector<std::string> labsStorage;
 
 bool m_runThread = false;
@@ -369,6 +376,55 @@ public:
           nodeDataStorage[n.name()] = n.value();
        }
     }
+
+   void onNewRenderModification(AMM::RenderModification &rendMod, SampleInfo_t *info) {
+      std::ostringstream messageOut;
+      messageOut << "[AMM_Render_Modification]"
+                     << "type=" << rendMod.type() << ";"
+                     << "payload=" << rendMod.data();
+      std::string stringOut = messageOut.str();
+      //LOG_DEBUG << "Render modification received from AMM: " << stringOut;
+
+      if ( rendMod.type().compare("CONNECT_ECG") == 0 ) {
+        statusStorage["MONITOR_ECG"] = "ON";
+      } else if ( rendMod.type().compare("DETACH_ECG") == 0 ) {
+         statusStorage["MONITOR_ECG"] = "OFF";
+      } else if ( rendMod.type().compare("CONNECT_PULSE_OX") == 0 ) {
+         statusStorage["MONITOR_PULSEOX"] = "ON";
+      } else if ( rendMod.type().compare("DETACH_PULSE_OX") == 0 ) {
+         statusStorage["MONITOR_PULSEOX"] = "OFF";
+      } else if ( rendMod.type().compare("CONNECT_NIBP") == 0 ) {
+         statusStorage["MONITOR_NIBP"] = "ON";
+      } else if ( rendMod.type().compare("DETACH_NIBP") == 0 ) {
+         statusStorage["MONITOR_NIBP"] = "OFF";
+      } else if ( rendMod.type().compare("CONNECT_TEMP_PROBE") == 0 ) {
+         statusStorage["MONITOR_TEMP"] = "ON";
+      } else if ( rendMod.type().compare("DETACH_TEMP_PROBE") == 0 ) {
+         statusStorage["MONITOR_TEMP"] = "OFF";
+      } else if ( rendMod.type().compare("CONNECT_ART_LINE") == 0 ) {
+         statusStorage["MONITOR_ARTLINE"] = "ON";
+      } else if ( rendMod.type().compare("DETACH_ART_LINE") == 0 ) {
+         statusStorage["MONITOR_ARTLINE"] = "OFF";
+      } else if ( rendMod.type().compare("CONNECT_ETCO2") == 0 ) {
+         statusStorage["MONITOR_ETCO2"] = "ON";
+      } else if ( rendMod.type().compare("DETACH_ETCO2") == 0 ) {
+         statusStorage["MONITOR_ETCO2"] = "OFF";
+      } else if ( rendMod.type().compare("ATTACH_TO_PATIENT") == 0 ) {
+         statusStorage["MONITOR_ECG"] = "ON";
+         statusStorage["MONITOR_PULSEOX"] = "ON";
+         statusStorage["MONITOR_NIBP"] = "ON";
+         statusStorage["MONITOR_TEMP"] = "ON";
+         statusStorage["MONITOR_ARTLINE"] = "ON";
+         statusStorage["MONITOR_ETCO2"] = "ON";
+      } else if ( rendMod.type().compare("DETACH_FROM_PATIENT") == 0 ) {
+         statusStorage["MONITOR_ECG"] = "OFF";
+         statusStorage["MONITOR_PULSEOX"] = "OFF";
+         statusStorage["MONITOR_NIBP"] = "OFF";
+         statusStorage["MONITOR_TEMP"] = "OFF";
+         statusStorage["MONITOR_ARTLINE"] = "OFF";
+         statusStorage["MONITOR_ETCO2"] = "OFF";
+      } 
+   }
 };
 
 const std::string moduleName = "AMM_REST_Adapter";
@@ -377,8 +433,6 @@ AMM::DDSManager<AMMListener> *mgr = new AMM::DDSManager<AMMListener>(configFile)
 AMM::UUID m_uuid;
 
 database db("amm.db");
-
-
 
 void SendReset() {
    AMM::SimulationControl simControl;
@@ -1462,6 +1516,7 @@ int main(int argc, char *argv[]) {
    mgr->CreatePhysiologyValueSubscriber(&al, &AMMListener::onNewPhysiologyValue);
    mgr->CreateCommandSubscriber(&al, &AMMListener::onNewCommand);
    mgr->CreateStatusSubscriber(&al, &AMMListener::onNewStatus);
+   mgr->CreateRenderModificationSubscriber(&al, &AMMListener::onNewRenderModification);
 
    mgr->CreateAssessmentPublisher();
    mgr->CreateRenderModificationPublisher();
