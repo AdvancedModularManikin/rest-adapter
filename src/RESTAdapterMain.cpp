@@ -117,6 +117,7 @@ void ResetLabs() {
    labRow << "ABG,";
    labRow << "Lactate,";
    labRow << "pH,";
+    labRow << "modified_pH,";
    labRow << "PCO2,";
    labRow << "PO2,";
    labRow << "TCO2,";
@@ -204,6 +205,7 @@ void AppendLabRow() {
    labRow << "ABG,";
    labRow << nodeDataStorage["Substance_Lactate_Concentration_mmol"] << ",";
    labRow << nodeDataStorage["BloodChemistry_BloodPH"] << ",";
+   labRow << nodeDataStorage["BloodChemistry_BloodPH_MOD"] << ",";
    labRow << nodeDataStorage["BloodChemistry_Arterial_CarbonDioxide_Pressure"] << ",";
    labRow << nodeDataStorage["BloodChemistry_Arterial_Oxygen_Pressure"] << ",";
    labRow << nodeDataStorage["MetabolicPanel_CarbonDioxide"] << ",";
