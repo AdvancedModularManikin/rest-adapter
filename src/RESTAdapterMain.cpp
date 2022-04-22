@@ -1,3 +1,4 @@
+
 #include <mutex>
 #include <chrono>
 #include <thread>
@@ -54,20 +55,27 @@ std::string scenario_path = "./Scenarios/";
 
 std::map<std::string, double> nodeDataStorage;
 
-std::map <std::string, std::string> statusStorage = {{"STATUS",         "NOT RUNNING"},
-                                                     {"TICK",           "0"},
-                                                     {"TIME",           "0"},
-                                                     {"SCENARIO",       ""},
-                                                     {"STATE",          ""},
-                                                     {"AIR_SUPPLY",     ""},
-                                                     {"CLEAR_SUPPLY",   ""},
-                                                     {"BLOOD_SUPPLY",   ""},
-                                                     {"FLUIDICS_STATE", ""},
-                                                     {"BATTERY1",       ""},
-                                                     {"BATTERY2",       ""},
-                                                     {"EXT_POWER",      ""},
-                                                     {"IVARM_STATE",    ""}};
-std::vector <std::string> labsStorage;
+std::map<std::string, std::string> statusStorage = {{"STATUS",         "NOT RUNNING"},
+                                                    {"TICK",           "0"},
+                                                    {"TIME",           "0"},
+                                                    {"SCENARIO",       ""},
+                                                    {"STATE",          ""},
+                                                    {"AIR_SUPPLY",     ""},
+                                                    {"CLEAR_SUPPLY",   ""},
+                                                    {"BLOOD_SUPPLY",   ""},
+                                                    {"FLUIDICS_STATE", ""},
+                                                    {"BATTERY1",       ""},
+                                                    {"BATTERY2",       ""},
+                                                    {"EXT_POWER",      ""},
+                                                    {"IVARM_STATE",    ""},
+                                                    {"MONITOR_ECG",     ""},
+                                                    {"MONITOR_PULSEOX", ""},
+                                                    {"MONITOR_NIBP",    ""},
+                                                    {"MONITOR_TEMP",    ""},
+                                                    {"MONITOR_ARTLINE", ""},
+                                                    {"MONITOR_ETCO2",   ""},
+};
+std::vector<std::string> labsStorage;
 
 bool m_runThread = false;
 int64_t lastTick = 0;
@@ -258,6 +266,33 @@ void AppendLabRow() {
     labsStorage.push_back(labRow.str());
 }
 
+std::string ExtractTypeFromRenderMod(std::string payload) {
+    std::size_t pos = payload.find("type=");
+    if (pos != std::string::npos) {
+        std::string p1 = payload.substr(pos + 6);
+        std::size_t pos2 = p1.find("\"");
+        if (pos2 != std::string::npos) {
+            std::string p2 = p1.substr(0, pos2);
+            return p2;
+        }
+    }
+    return {};
+};
+
+std::string ExtractManikinIDFromString(std::string in) {
+    std::size_t pos = in.find("mid=");
+    if (pos != std::string::npos) {
+        std::string mid1 = in.substr(pos + 4);
+        std::size_t pos1 = mid1.find(";");
+        if (pos1 != std::string::npos) {
+            std::string mid2 = mid1.substr(0, pos1);
+            return mid2;
+        }
+        return mid1;
+    }
+    return {};
+}
+
 /// Core logic container for DDS Manager functions.
 class AMMListener {
 public:
@@ -270,14 +305,15 @@ public:
                   << st.capability() << "] Status = " << statusValue.str() << " (" << st.value() << ")";
         // Message = " << st.message();
 
-        if (st.module_name() == "AMM_FluidManager" || st.module_name() == "Torso_Control") {
-            if (st.capability() == "fluidics") {
+        if ( st.module_name() == "AMM_FluidManager" || st.module_name() == "Torso_Control" )
+        {
+            if ( st.capability() == "fluidics" ) {
                 statusStorage["FLUIDICS_STATE"] = statusValue.str();
-            } else if (st.capability() == "clear_supply") {
+            } else if ( st.capability() == "clear_supply" ) {
                 statusStorage["CLEAR_SUPPLY"] = statusValue.str();
-            } else if (st.capability() == "blood_supply") {
+            } else if ( st.capability() == "blood_supply") {
                 statusStorage["BLOOD_SUPPLY"] = statusValue.str();
-            } else if (st.capability() == "air_supply") {
+            } else if ( st.capability() == "air_supply") {
                 statusStorage["AIR_SUPPLY"] = statusValue.str();
                 // parse st.message() to double p; [p] = psi
                 try {
@@ -290,8 +326,9 @@ public:
             }
         }
 
-        if (st.module_name() == "AJAMS_Services") {
-            if (st.capability() == "battery-1") {
+        if ( st.module_name() == "AJAMS_Services" )
+        {
+            if ( st.capability() == "battery-1" ) {
                 statusStorage["BATTERY1"] = statusValue.str();
                 // parse st.message() to double soc; [soc] = %
                 try {
@@ -301,7 +338,7 @@ public:
                     nodeDataStorage["Battery1_SOC"] = 0.0;
                 } catch (const std::out_of_range &) {
                 }
-            } else if (st.capability() == "battery-2") {
+            } else if ( st.capability() == "battery-2" ) {
                 statusStorage["BATTERY2"] = statusValue.str();
                 // parse st.message() to double soc; [soc] = %
                 try {
@@ -311,7 +348,7 @@ public:
                     nodeDataStorage["Battery2_SOC"] = 0.0;
                 } catch (const std::out_of_range &) {
                 }
-            } else if (st.capability() == "ext_power") {
+            } else if ( st.capability() == "ext_power" ) {
                 statusStorage["EXT_POWER"] = statusValue.str();
             }
         }
@@ -347,8 +384,7 @@ public:
                 nodeDataStorage.clear();
                 ResetLabs();
             } else if (value.find("END_SIMULATION") != std::string::npos) {
-                // functionally the same as RESET sim, but triggers assessment / AAR
-                statusStorage["STATUS"] = "NOT RUNNING";
+                statusStorage["STATUS"] = "STOPPED";
                 statusStorage["TICK"] = "0";
                 statusStorage["TIME"] = "0";
                 nodeDataStorage.clear();
@@ -375,15 +411,63 @@ public:
             nodeDataStorage[n.name()] = n.value();
         }
     }
+
+    void onNewRenderModification(AMM::RenderModification &rendMod, SampleInfo_t *info) {
+        std::ostringstream messageOut;
+        messageOut << "[AMM_Render_Modification]"
+                   << "type=" << rendMod.type() << ";"
+                   << "payload=" << rendMod.data();
+        std::string stringOut = messageOut.str();
+        //LOG_DEBUG << "Render modification received from AMM: " << stringOut;
+
+        if ( rendMod.type().compare("CONNECT_ECG") == 0 ) {
+            statusStorage["MONITOR_ECG"] = "ON";
+        } else if ( rendMod.type().compare("DETACH_ECG") == 0 ) {
+            statusStorage["MONITOR_ECG"] = "OFF";
+        } else if ( rendMod.type().compare("CONNECT_PULSE_OX") == 0 ) {
+            statusStorage["MONITOR_PULSEOX"] = "ON";
+        } else if ( rendMod.type().compare("DETACH_PULSE_OX") == 0 ) {
+            statusStorage["MONITOR_PULSEOX"] = "OFF";
+        } else if ( rendMod.type().compare("CONNECT_NIBP") == 0 ) {
+            statusStorage["MONITOR_NIBP"] = "ON";
+        } else if ( rendMod.type().compare("DETACH_NIBP") == 0 ) {
+            statusStorage["MONITOR_NIBP"] = "OFF";
+        } else if ( rendMod.type().compare("CONNECT_TEMP_PROBE") == 0 ) {
+            statusStorage["MONITOR_TEMP"] = "ON";
+        } else if ( rendMod.type().compare("DETACH_TEMP_PROBE") == 0 ) {
+            statusStorage["MONITOR_TEMP"] = "OFF";
+        } else if ( rendMod.type().compare("CONNECT_ART_LINE") == 0 ) {
+            statusStorage["MONITOR_ARTLINE"] = "ON";
+        } else if ( rendMod.type().compare("DETACH_ART_LINE") == 0 ) {
+            statusStorage["MONITOR_ARTLINE"] = "OFF";
+        } else if ( rendMod.type().compare("CONNECT_ETCO2") == 0 ) {
+            statusStorage["MONITOR_ETCO2"] = "ON";
+        } else if ( rendMod.type().compare("DETACH_ETCO2") == 0 ) {
+            statusStorage["MONITOR_ETCO2"] = "OFF";
+        } else if ( rendMod.type().compare("ATTACH_TO_PATIENT") == 0 ) {
+            statusStorage["MONITOR_ECG"] = "ON";
+            statusStorage["MONITOR_PULSEOX"] = "ON";
+            statusStorage["MONITOR_NIBP"] = "ON";
+            statusStorage["MONITOR_TEMP"] = "ON";
+            statusStorage["MONITOR_ARTLINE"] = "ON";
+            statusStorage["MONITOR_ETCO2"] = "ON";
+        } else if ( rendMod.type().compare("DETACH_FROM_PATIENT") == 0 ) {
+            statusStorage["MONITOR_ECG"] = "OFF";
+            statusStorage["MONITOR_PULSEOX"] = "OFF";
+            statusStorage["MONITOR_NIBP"] = "OFF";
+            statusStorage["MONITOR_TEMP"] = "OFF";
+            statusStorage["MONITOR_ARTLINE"] = "OFF";
+            statusStorage["MONITOR_ETCO2"] = "OFF";
+        }
+    }
 };
 
 const std::string moduleName = "AMM_REST_Adapter";
 const std::string configFile = "config/rest_adapter_amm.xml";
-AMM::DDSManager <AMMListener> *mgr = new AMM::DDSManager<AMMListener>(configFile);
+AMM::DDSManager<AMMListener> *mgr = new AMM::DDSManager<AMMListener>(configFile);
 AMM::UUID m_uuid;
 
 database db("amm.db");
-
 
 void SendReset() {
     AMM::SimulationControl simControl;
@@ -535,33 +619,6 @@ void SendCommand(const std::string &command) {
     }
 }
 
-std::string ExtractTypeFromMod(std::string payload) {
-    std::size_t pos = payload.find("type=");
-    if (pos != std::string::npos) {
-        std::string p1 = payload.substr(pos + 6);
-        std::size_t pos2 = p1.find("\"");
-        if (pos2 != std::string::npos) {
-            std::string p2 = p1.substr(0, pos2);
-            return p2;
-        }
-    }
-    return {};
-};
-
-std::string ExtractManikinIDFromString(std::string in) {
-    std::size_t pos = in.find("mid=");
-    if (pos != std::string::npos) {
-        std::string mid1 = in.substr(pos + 4);
-        std::size_t pos1 = mid1.find(";");
-        if (pos1 != std::string::npos) {
-            std::string mid2 = mid1.substr(0, pos1);
-            return mid2;
-        }
-        return mid1;
-    }
-    return {};
-}
-
 void printCookies(const Http::Request &req) {
     auto cookies = req.cookies();
     std::cout << "Cookies: [" << std::endl;
@@ -693,7 +750,7 @@ private:
     void getInstance(const Rest::Request &request,
                      Http::ResponseWriter response) {
         StringBuffer s;
-        Writer <StringBuffer> writer(s);
+        Writer<StringBuffer> writer(s);
 
         std::ifstream t("static/current_scenario.txt");
         std::string scenario((std::istreambuf_iterator<char>(t)),
@@ -714,13 +771,13 @@ private:
     void getStates(const Rest::Request &request, Http::ResponseWriter response) {
 
         StringBuffer s;
-        Writer <StringBuffer> writer(s);
+        Writer<StringBuffer> writer(s);
 
         writer.StartArray();
         if (exists(state_path) && is_directory(state_path)) {
             path p(state_path);
             if (is_directory(p)) {
-                std::vector <boost::filesystem::path> paths(
+                std::vector<boost::filesystem::path> paths(
                         boost::filesystem::directory_iterator{state_path}, boost::filesystem::directory_iterator{}
                 );
                 std::sort(paths.begin(), paths.end());
@@ -769,7 +826,7 @@ private:
     void getScenarios(const Rest::Request &request,
                       Http::ResponseWriter response) {
         StringBuffer s;
-        Writer <StringBuffer> writer(s);
+        Writer<StringBuffer> writer(s);
 
         writer.StartArray();
         if (exists(scenario_path) && is_directory(scenario_path)) {
@@ -800,7 +857,7 @@ private:
     void getPatients(const Rest::Request &request,
                      Http::ResponseWriter response) {
         StringBuffer s;
-        Writer <StringBuffer> writer(s);
+        Writer<StringBuffer> writer(s);
 
         writer.StartArray();
         if (exists(patient_path) && is_directory(patient_path)) {
@@ -833,7 +890,7 @@ private:
 
     }
 
-    int writeToFile(const string &filename, const string &data) {
+    int writeToFile(const string & filename, const string & data) {
         std::fstream out;
 
         out.open(filename, std::fstream::in | std::fstream::out | std::fstream::trunc);
@@ -841,7 +898,8 @@ private:
         LOG_INFO << "Writing to " << filename;
 
         // If file does not exist, Create new file
-        if (!out) {
+        if (!out)
+        {
             LOG_WARNING << "Cannot open file, file does not exist. Creating new file.";
             out.open(filename);
         }
@@ -871,8 +929,7 @@ private:
         auto s = std::chrono::steady_clock::now();
         writeToFile(filename, request.body());
         auto dt = std::chrono::steady_clock::now() - s;
-        LOG_INFO << "File upload processed in: " << std::chrono::duration_cast<std::chrono::microseconds>(dt).count()
-                 << endl;
+        LOG_INFO << "File upload processed in: " << std::chrono::duration_cast<std::chrono::microseconds>(dt).count()<< endl;
         response.send(Http::Code::Ok);
 
         LOG_INFO << "Sending out system message that there's an assessment available.";
@@ -895,9 +952,10 @@ private:
     }
 
 
+
     void getActions(const Rest::Request &request, Http::ResponseWriter response) {
         StringBuffer s;
-        Writer <StringBuffer> writer(s);
+        Writer<StringBuffer> writer(s);
 
         writer.StartArray();
         if (exists(action_path) && is_directory(action_path)) {
@@ -1049,7 +1107,7 @@ private:
         auto name = request.param(":name").as<std::string>();
         SendCommand(name);
         StringBuffer s;
-        Writer <StringBuffer> writer(s);
+        Writer<StringBuffer> writer(s);
         writer.StartObject();
         writer.Key("Sent command");
         writer.String(name.c_str());
@@ -1062,7 +1120,7 @@ private:
                        Http::ResponseWriter response) {
         auto id = request.param(":id").as<std::string>();
         StringBuffer s;
-        Writer <StringBuffer> writer(s);
+        Writer<StringBuffer> writer(s);
         db << "SELECT "
               "module_id AS module_id,"
               "module_name AS module_name,"
@@ -1107,7 +1165,7 @@ private:
                          Http::ResponseWriter response) {
         auto guid = request.param(":guid").as<std::string>();
         StringBuffer s;
-        Writer <StringBuffer> writer(s);
+        Writer<StringBuffer> writer(s);
         db << "SELECT "
               "module_id AS module_id,"
               "module_guid as module_guid,"
@@ -1151,7 +1209,7 @@ private:
     void getModuleCount(const Rest::Request &request,
                         Http::ResponseWriter response) {
         StringBuffer s;
-        Writer <StringBuffer> writer(s);
+        Writer<StringBuffer> writer(s);
 
         int totalCount = 0;
         int coreCount = 0;
@@ -1176,7 +1234,7 @@ private:
 
     void getOtherModules(const Rest::Request &request, Http::ResponseWriter response) {
         StringBuffer s;
-        Writer <StringBuffer> writer(s);
+        Writer<StringBuffer> writer(s);
         writer.StartArray();
         db << "SELECT DISTINCT module_name FROM module_capabilities where module_name NOT LIKE 'AMM_%'"
            >> [&](string module_name) {
@@ -1189,7 +1247,7 @@ private:
 
     void getModules(const Rest::Request &request, Http::ResponseWriter response) {
         StringBuffer s;
-        Writer <StringBuffer> writer(s);
+        Writer<StringBuffer> writer(s);
         writer.StartArray();
         db << "SELECT "
               "module_capabilities.module_id AS module_id,"
@@ -1235,7 +1293,7 @@ private:
     void getEventLog(const Rest::Request &request,
                      Http::ResponseWriter response) {
         StringBuffer s;
-        Writer <StringBuffer> writer(s);
+        Writer<StringBuffer> writer(s);
         writer.StartArray();
         db << "SELECT "
               "module_capabilities.module_id as module_id,"
@@ -1304,7 +1362,7 @@ private:
     void getDiagnosticLog(const Rest::Request &request,
                           Http::ResponseWriter response) {
         StringBuffer s;
-        Writer <StringBuffer> writer(s);
+        Writer<StringBuffer> writer(s);
         writer.StartArray();
         db << "SELECT "
               "logs.module_name, "
@@ -1367,7 +1425,7 @@ private:
 
     void getNodes(const Rest::Request &request, Http::ResponseWriter response) {
         StringBuffer s;
-        Writer <StringBuffer> writer(s);
+        Writer<StringBuffer> writer(s);
         writer.StartArray();
 
         auto nit = nodeDataStorage.begin();
@@ -1406,7 +1464,7 @@ private:
         auto it = nodeDataStorage.find(name);
         if (it != nodeDataStorage.end()) {
             StringBuffer s;
-            Writer <StringBuffer> writer(s);
+            Writer<StringBuffer> writer(s);
             writer.StartObject();
             writer.Key(it->first.c_str());
             writer.Double(it->second);
@@ -1431,10 +1489,10 @@ private:
     }
 
     typedef std::mutex Lock;
-    typedef std::lock_guard <Lock> Guard;
+    typedef std::lock_guard<Lock> Guard;
     Lock commandLock;
 
-    std::shared_ptr <Http::Endpoint> httpEndpoint;
+    std::shared_ptr<Http::Endpoint> httpEndpoint;
     Rest::Router router;
 };
 
@@ -1451,7 +1509,7 @@ Address addr(Ipv4::any(), port);
 DDSEndpoint server(addr);
 
 int main(int argc, char *argv[]) {
-    static plog::ColorConsoleAppender <plog::TxtFormatter> consoleAppender;
+    static plog::ColorConsoleAppender<plog::TxtFormatter> consoleAppender;
     plog::init(plog::verbose, &consoleAppender);
 
     for (int i = 1; i < argc; ++i) {
@@ -1493,6 +1551,7 @@ int main(int argc, char *argv[]) {
     mgr->CreatePhysiologyValueSubscriber(&al, &AMMListener::onNewPhysiologyValue);
     mgr->CreateCommandSubscriber(&al, &AMMListener::onNewCommand);
     mgr->CreateStatusSubscriber(&al, &AMMListener::onNewStatus);
+    mgr->CreateRenderModificationSubscriber(&al, &AMMListener::onNewRenderModification);
 
     mgr->CreateAssessmentPublisher();
     mgr->CreateRenderModificationPublisher();
