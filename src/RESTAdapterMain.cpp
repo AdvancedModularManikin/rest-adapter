@@ -24,6 +24,7 @@
 
 #include "thirdparty/sqlite_modern_cpp.h"
 
+using namespace AMM;
 using namespace std;
 using namespace std::chrono;
 using namespace boost::filesystem;
@@ -83,7 +84,6 @@ int64_t lastTick = 0;
 const string sysPrefix = "[SYS]";
 const string actPrefix = "[ACT]";
 const string loadScenarioPrefix = "LOAD_SCENARIO:";
-const string loadScenarioFilePrefix = "LOAD_SCENARIOFILE:";
 const string loadPrefix = "LOAD_STATE:";
 const string loadPatientPrefix = "LOAD_PATIENT:";
 
@@ -294,7 +294,7 @@ std::string ExtractManikinIDFromString(std::string in) {
 }
 
 /// Core logic container for DDS Manager functions.
-class AMMListener {
+class RESTListener : public ListenerInterface {
 public:
 
     void onNewStatus(AMM::Status &st, SampleInfo_t *info) {
@@ -368,7 +368,36 @@ public:
         statusStorage["TIME"] = to_string(t.time());
     }
 
+    void onNewSimulationControl(AMM::SimulationControl &simControl, SampleInfo_t *info) {
+        switch (simControl.type()) {
+            case AMM::ControlType::RUN: {
+                statusStorage["STATUS"] = "RUNNING";
+                LOG_DEBUG << "SimControl received: Run sim.";
+                break;
+            }
+
+            case AMM::ControlType::HALT: {
+                statusStorage["STATUS"] = "PAUSED";
+                break;
+            }
+
+            case AMM::ControlType::RESET: {
+                LOG_DEBUG
+                        << "SimControl received: Reset simulation, clean up and prepare for next run.";
+                statusStorage["STATUS"] = "NOT RUNNING";
+                statusStorage["TICK"] = "0";
+                statusStorage["TIME"] = "0";
+                nodeDataStorage.clear();
+                ResetLabs();
+                break;
+            }
+
+        }
+    }
+
     void onNewCommand(AMM::Command &c, SampleInfo_t *info) {
+        std::string manikin_id = ExtractManikinIDFromString(c.message());
+        LOG_INFO << "Got a command: " << c.message() << " for manikin " << manikin_id;
         if (!c.message().compare(0, sysPrefix.size(), sysPrefix)) {
             std::string value = c.message().substr(sysPrefix.size());
             if (value.find("START_SIM") != std::string::npos) {
@@ -403,6 +432,8 @@ public:
                                       loadPatientPrefix)) {
                 statusStorage["PATIENT"] = value.substr(loadPatientPrefix.size());
             }
+        } else {
+            //LOG_TRACE << "Unknown AMM Command: " << c.message();
         }
     }
 
@@ -464,7 +495,7 @@ public:
 
 const std::string moduleName = "AMM_REST_Adapter";
 const std::string configFile = "config/rest_adapter_amm.xml";
-AMM::DDSManager<AMMListener> *mgr = new AMM::DDSManager<AMMListener>(configFile);
+DDSManager<RESTListener> *mgr;
 AMM::UUID m_uuid;
 
 database db("amm.db");
@@ -489,17 +520,6 @@ void PublishOperationalDescription() {
     od.capabilities_schema(capabilities);
     od.description();
     mgr->WriteOperationalDescription(od);
-}
-
-void PublishConfiguration() {
-    AMM::ModuleConfiguration mc;
-    auto ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-    mc.timestamp(ms);
-    mc.module_id(m_uuid);
-    mc.name(moduleName);
-    const std::string configuration = AMM::Utility::read_file_to_string("config/rest_adapter_configuration.xml");
-    mc.capabilities_configuration(configuration);
-    mgr->WriteModuleConfiguration(mc);
 }
 
 AMM::UUID SendEventRecord(
@@ -1532,7 +1552,8 @@ int main(int argc, char *argv[]) {
 
     ResetLabs();
 
-    AMMListener al;
+    RESTListener al;
+    mgr = new AMM::DDSManager<RESTListener>(configFile);
 
     mgr->InitializeCommand();
     mgr->InitializeSimulationControl();
@@ -1547,11 +1568,12 @@ int main(int argc, char *argv[]) {
     mgr->InitializeModuleConfiguration();
     mgr->InitializeStatus();
 
-    mgr->CreateTickSubscriber(&al, &AMMListener::onNewTick);
-    mgr->CreatePhysiologyValueSubscriber(&al, &AMMListener::onNewPhysiologyValue);
-    mgr->CreateCommandSubscriber(&al, &AMMListener::onNewCommand);
-    mgr->CreateStatusSubscriber(&al, &AMMListener::onNewStatus);
-    mgr->CreateRenderModificationSubscriber(&al, &AMMListener::onNewRenderModification);
+    mgr->CreateTickSubscriber(&al, &RESTListener::onNewTick);
+    mgr->CreatePhysiologyValueSubscriber(&al, &RESTListener::onNewPhysiologyValue);
+    mgr->CreateCommandSubscriber(&al, &RESTListener::onNewCommand);
+    mgr->CreateStatusSubscriber(&al, &RESTListener::onNewStatus);
+    mgr->CreateRenderModificationSubscriber(&al, &RESTListener::onNewRenderModification);
+    mgr->CreateSimulationControlSubscriber(&al, &RESTListener::onNewSimulationControl);
 
     mgr->CreateAssessmentPublisher();
     mgr->CreateRenderModificationPublisher();
@@ -1568,7 +1590,6 @@ int main(int argc, char *argv[]) {
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
 
     PublishOperationalDescription();
-    PublishConfiguration();
 
     gethostname(hostname, HOST_NAME_MAX);
 
