@@ -54,6 +54,7 @@ std::string state_path = "./states/";
 std::string patient_path = "./patients/";
 std::string scenario_path = "./Scenarios/";
 
+std::mutex nds_mutex;
 std::map<std::string, double> nodeDataStorage;
 
 std::map<std::string, std::string> statusStorage = {{"STATUS",         "NOT RUNNING"},
@@ -438,6 +439,7 @@ public:
     }
 
     void onNewPhysiologyValue(AMM::PhysiologyValue &n, SampleInfo_t *info) {
+        const std::lock_guard<std::mutex> lock(nds_mutex);
         if (!isnan(n.value())) {
             nodeDataStorage[n.name()] = n.value();
         }
