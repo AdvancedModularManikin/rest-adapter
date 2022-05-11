@@ -52,7 +52,7 @@ char hostname[HOST_NAME_MAX];
 std::string action_path = "Actions/";
 std::string state_path = "./states/";
 std::string patient_path = "./patients/";
-std::string scenario_path = "./Scenarios/";
+std::string scenario_path = "./static/scenarios/";
 
 std::mutex nds_mutex;
 std::map<std::string, double> nodeDataStorage;
@@ -860,7 +860,7 @@ private:
                         writer.StartObject();
                         writer.Key("name");
                         writer.String(dir_itr->path().filename().c_str());
-                        writer.Key("description");
+                        writer.Key("last_updated");
                         stringstream writeTime;
                         writeTime << last_write_time(dir_itr->path());
                         writer.String(writeTime.str().c_str());
