@@ -1237,7 +1237,7 @@ private:
         int coreCount = 0;
         int otherCount = 0;
         db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities" >> totalCount;
-        db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities where module_name LIKE 'AMM_%'" >> coreCount;
+        //db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities where module_name LIKE 'AMM_%'" >> coreCount;
 
         otherCount = totalCount - coreCount;
 
