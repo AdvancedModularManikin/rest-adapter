@@ -533,10 +533,13 @@ AMM::UUID SendEventRecord(
     AMM::EventRecord er;
     AMM::FMA_Location fmaL;
     fmaL.name(location);
-    er.type(type);
-    er.location(fmaL);
+
     AMM::UUID eventUUID;
     eventUUID.id(mgr->GenerateUuidString());
+
+    er.type(type);
+    er.location(fmaL);
+    er.id(eventUUID);
     mgr->WriteEventRecord(er);
     return eventUUID;
 }
