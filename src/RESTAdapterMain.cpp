@@ -529,6 +529,7 @@ AMM::UUID SendEventRecord(
         const std::string &practitioner,
         const std::string &type
 ) {
+    LOG_DEBUG << "Publishing an event record: " << type;
     AMM::EventRecord er;
     AMM::FMA_Location fmaL;
     fmaL.name(location);
