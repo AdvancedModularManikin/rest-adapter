@@ -1583,6 +1583,7 @@ int main(int argc, char *argv[]) {
     mgr->CreatePhysiologyModificationPublisher();
     mgr->CreateSimulationControlPublisher();
     mgr->CreateCommandPublisher();
+    mgr->CreateEventRecordPublisher();
 
     mgr->CreateOperationalDescriptionPublisher();
     mgr->CreateModuleConfigurationPublisher();
