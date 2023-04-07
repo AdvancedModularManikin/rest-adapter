@@ -1,4 +1,3 @@
-
 #include <mutex>
 #include <chrono>
 #include <thread>
@@ -21,6 +20,7 @@
 
 #include "boost/filesystem.hpp"
 #include <boost/algorithm/string/join.hpp>
+#include <boost/process.hpp>
 
 #include "thirdparty/sqlite_modern_cpp.h"
 
@@ -423,6 +423,8 @@ public:
                 AppendLabRow();
             } else if (value.find("CLEAR_LOG") != std::string::npos) {
 
+            } else if (value.find("RESTART_SERVICE") != std::string::npos) {
+		LOG_INFO << "Command: RESTART_SERVICE" << c.message();
             } else if (!value.compare(0, loadPrefix.size(), loadPrefix)) {
                 statusStorage["STATE"] = value.substr(loadPrefix.size());
                 SendReset();
@@ -631,6 +633,12 @@ void SendCommand(const std::string &command) {
             simControl.timestamp(ms);
             simControl.type(AMM::ControlType::SAVE);
             mgr->WriteSimulationControl(simControl);
+        } else if (value.compare("RESTART_SERVICES") == 0) {
+            // Execute restart request here. Do not forward.
+            // TODO: this functionality might be more appropriate for the module manager to handle 
+            //       the else statement below will forward. Module manager would receive the command and process
+            std::string command = "supervisorctl start amm_startup";
+            int result = boost::process::system(command);
         } else {
             // Publish a SYS Command
             AMM::Command cmdInstance;
