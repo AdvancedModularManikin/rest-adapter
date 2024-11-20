@@ -8,9 +8,9 @@
 
 #include "amm_std.h"
 
-#include "AMM/BaseLogger.h"
+#include "amm/BaseLogger.h"
 
-#include "AMM/Utility.h"
+#include "amm/Utility.h"
 
 #include <pistache/endpoint.h>
 #include <pistache/router.h>
@@ -50,7 +50,7 @@ char hostname[HOST_NAME_MAX];
 std::string action_path = "Actions/";
 std::string state_path = "./states/";
 std::string patient_path = "./patients/";
-std::string scenario_path = "./Scenarios/";
+std::string scenario_path = "./static/scenarios/";
 
 std::map<std::string, double> nodeDataStorage;
 
