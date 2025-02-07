@@ -10,7 +10,9 @@ The REST Adapter allows for web endpoints to send and receive data on the MoHSES
 ### Requirements
 - [MoHSES Standard Library](https://github.com/AdvancedModularManikin/amm-library) (and FastRTPS and FastCDR)
 - rapidjson (`apt-get install rapidjson-dev`)
+- sqlite3 (`apt-get install #include libsqlite3-dev`)
 - [pistache](https://github.com/pistacheio/pistache)
+
 
 ### Installation
 ```bash

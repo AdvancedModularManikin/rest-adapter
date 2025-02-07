@@ -8,7 +8,7 @@ project("AMM_REST_Adapter")
 
 set(VERSION_TYPE "beta" CACHE STRING "version type" FORCE)
 set(PROJECT_VERSION_MAJOR, 1)
-set(PROJECT_VERSION_MINOR, 3)
+set(PROJECT_VERSION_MINOR, 5)
 set(PROJECT_VERSION_PATCH@, 0)
 site_name(VERSION_HOST) # read hostname to VERSION_HOST
 set(VERSION_HOST "${VERSION_HOST}" CACHE STRING "host of build" FORCE)
@@ -50,22 +50,25 @@ if (MSVC)
 else ()
     add_compile_options(-std=c++20)
     add_compile_options(-O0)
+    add_compile_options(-fno-stack-protector)
     set(Boost_USE_STATIC_LIBS OFF)
     set(Boost_USE_MULTITHREADED ON)
 endif ()
 
-find_package(Boost REQUIRED COMPONENTS filesystem iostreams system thread date_time)
+find_package(Boost REQUIRED COMPONENTS filesystem)
 find_package(fastcdr REQUIRED)
 find_package(fastrtps REQUIRED)
 find_package(SQLite3 REQUIRED)
 find_package(RapidJSON REQUIRED)
+
+find_package(PkgConfig)
 pkg_check_modules(Pistache REQUIRED IMPORTED_TARGET libpistache)
-# find_package(Pistache REQUIRED)
+
 find_package(amm_std REQUIRED)
 
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${SQLITE3_INCLUDE_DIR})
-
+include_directories(includes)
 add_subdirectory(src)
 
 file(COPY config DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})

@@ -2,9 +2,9 @@
 # CMake REST Bridge root/src
 #############################
 
-set(REST_ADAPTER_SOURCES RESTAdapterMain.cpp)
+#add_executable(amm_rest_adapter RESTAdapterMain.cpp DatabaseConnection.hpp DatabaseQueries.hpp ResourceManager.hpp)
 
-add_executable(amm_rest_adapter ${REST_ADAPTER_SOURCES})
+add_executable(amm_rest_adapter RESTAdapterMain.cpp)
 
 target_link_libraries(amm_rest_adapter
    PUBLIC amm_std
