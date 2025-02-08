@@ -45,7 +45,18 @@ public:
 	std::string getLabsReport() {
 		std::lock_guard<std::mutex> lock(m_mutex);
 		auto labs = m_labsManager.getAll();
-		return boost::algorithm::join(labs, "\n");
+		if (labs.empty()) {
+			return "";
+		}
+
+		std::string result;
+		for (size_t i = 0; i < labs.size(); ++i) {
+			result += labs[i];
+			if (i < labs.size() - 1) {
+				result += "\n";
+			}
+		}
+		return result;
 	}
 
 	void updateStatus(const std::string &key, const std::string &value) {

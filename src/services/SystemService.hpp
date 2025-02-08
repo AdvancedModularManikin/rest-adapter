@@ -6,7 +6,8 @@
 #include <optional>
 #include <filesystem>
 
-#include "plog/Log.h"
+#include "amm/BaseLogger.h"
+
 #include "core/Config.hpp"
 #include "core/MoHSESManager.hpp"
 #include "core/Types.hpp"

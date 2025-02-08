@@ -6,9 +6,11 @@
 #include <fstream>
 #include <regex>
 
-#include "plog/Log.h"
+#include "amm/BaseLogger.h"
+
 #include "utils/FileUtils.hpp"
 #include "utils/Exceptions.hpp"
+
 #include "DatabaseConfig.hpp"
 
 // Forward declaration

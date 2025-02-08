@@ -5,7 +5,8 @@
 #include <mutex>
 #include <functional>
 
-#include "plog/Log.h"
+#include "amm/BaseLogger.h"
+
 #include "thirdparty/sqlite_modern_cpp.h"
 
 #include "utils/Exceptions.hpp"

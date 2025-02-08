@@ -68,23 +68,3 @@ public:
 	explicit ResourceNotFoundException(const std::string& message)
 			: ApiException("Resource not found: " + message) {}
 };
-
-// Authentication/Authorization exceptions
-class AuthenticationException : public ApiException {
-public:
-	explicit AuthenticationException(const std::string& message)
-			: ApiException("Authentication error: " + message) {}
-};
-
-class AuthorizationException : public ApiException {
-public:
-	explicit AuthorizationException(const std::string& message)
-			: ApiException("Authorization error: " + message) {}
-};
-
-// Rate limiting exceptions
-class RateLimitException : public ApiException {
-public:
-	explicit RateLimitException(const std::string& message)
-			: ApiException("Rate limit exceeded: " + message) {}
-};

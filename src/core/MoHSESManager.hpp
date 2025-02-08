@@ -7,7 +7,6 @@
 #include <atomic>
 #include <optional>
 
-#include "plog/Log.h"
 #include "Config.hpp"
 #include "core/Types.hpp"
 #include "utils/Exceptions.hpp"
@@ -15,8 +14,6 @@
 #include "managers/StatusManager.hpp"
 #include "managers/LabsManager.hpp"
 
-#include "amm/DDSManager.h"
-#include "amm/BaseLogger.h"
 #include "amm_std.h"
 
 class MoHSESListener {

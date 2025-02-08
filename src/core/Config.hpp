@@ -8,9 +8,11 @@
 #include <filesystem>
 #include <optional>
 
-#include "plog/Log.h"
+#include "amm/BaseLogger.h"
+
 #include "rapidjson/document.h"
 #include "rapidjson/istreamwrapper.h"
+
 #include "utils/Exceptions.hpp"
 #include "utils/FileUtils.hpp"
 

@@ -55,7 +55,7 @@ else ()
     set(Boost_USE_MULTITHREADED ON)
 endif ()
 
-find_package(Boost REQUIRED COMPONENTS filesystem)
+#find_package(Boost REQUIRED COMPONENTS filesystem)
 find_package(fastcdr REQUIRED)
 find_package(fastrtps REQUIRED)
 find_package(SQLite3 REQUIRED)
@@ -66,7 +66,7 @@ pkg_check_modules(Pistache REQUIRED IMPORTED_TARGET libpistache)
 
 find_package(amm_std REQUIRED)
 
-include_directories(${Boost_INCLUDE_DIRS})
+#include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${SQLITE3_INCLUDE_DIR})
 
 include_directories(src)

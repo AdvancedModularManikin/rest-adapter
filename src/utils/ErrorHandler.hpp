@@ -186,13 +186,7 @@ public:
 		}
 	}
 
-	// Rate limiting helper
-	static void checkRateLimit(const std::string& clientId,
-	                           const std::string& endpoint) {
-		// Implement rate limiting logic here
-		LOG_INFO << "Rate limit check for client " << clientId
-		         << " on endpoint " << endpoint;
-	}
+
 
 private:
 

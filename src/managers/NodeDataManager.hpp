@@ -6,7 +6,7 @@
 #include <shared_mutex>
 #include <string>
 
-#include "plog/Log.h"
+#include "amm/BaseLogger.h"
 
 class NodeDataManager {
 public:

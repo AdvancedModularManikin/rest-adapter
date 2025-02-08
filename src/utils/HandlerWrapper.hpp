@@ -3,7 +3,8 @@
 #include <pistache/router.h>
 #include <pistache/http.h>
 #include "utils/Exceptions.hpp"
-#include "plog/Log.h"
+
+#include "amm/BaseLogger.h"
 
 class HandlerWrapper {
 public:

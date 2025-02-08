@@ -8,7 +8,7 @@
 #include <iomanip>
 #include <system_error>
 
-#include "plog/Log.h"
+#include "amm/BaseLogger.h"
 
 #include "Exceptions.hpp"
 

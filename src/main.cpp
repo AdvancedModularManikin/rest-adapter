@@ -5,8 +5,7 @@
 #include <limits.h>
 #include <unistd.h>
 
-#include "plog/Log.h"
-#include "plog/Appenders/ColorConsoleAppender.h"
+#include "amm/BaseLogger.h"
 
 #include "core/Config.hpp"
 #include "core/MoHSESManager.hpp"

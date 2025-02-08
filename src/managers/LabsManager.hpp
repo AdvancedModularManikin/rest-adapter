@@ -4,7 +4,7 @@
 #include <mutex>
 #include <string>
 
-#include "plog/Log.h"
+#include "amm/BaseLogger.h"
 
 class LabsManager {
 public:
