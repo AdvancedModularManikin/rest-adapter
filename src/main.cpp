@@ -7,19 +7,19 @@
 
 #include "amm/BaseLogger.h"
 
-#include "core/Config.hpp"
-#include "core/MoHSESManager.hpp"
+#include "core/Config.h"
+#include "core/MoHSESManager.h"
 
-#include "api/Router.hpp"
+#include "api/Router.h"
 
-#include "db/DatabaseConnection.hpp"
-#include "db/DatabaseConfig.hpp"
+#include "db/DatabaseConnection.h"
+#include "db/DatabaseConfig.h"
 
-#include "services/StatusService.hpp"
-#include "services/ModuleService.hpp"
-#include "services/SystemService.hpp"
+#include "services/StatusService.h"
+#include "services/ModuleService.h"
+#include "services/SystemService.h"
 
-#include "utils/Exceptions.hpp"
+#include "utils/Exceptions.h"
 
 namespace {
 	volatile sig_atomic_t g_running = 1;

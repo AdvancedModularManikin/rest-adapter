@@ -8,10 +8,10 @@
 
 #include "amm/BaseLogger.h"
 
-#include "utils/FileUtils.hpp"
-#include "utils/Exceptions.hpp"
+#include "utils/FileUtils.h"
+#include "utils/Exceptions.h"
 
-#include "DatabaseConfig.hpp"
+#include "DatabaseConfig.h"
 
 // Forward declaration
 class DatabaseConnection;

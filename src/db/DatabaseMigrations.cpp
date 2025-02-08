@@ -1,5 +1,5 @@
 #include "DatabaseMigrations.h"
-#include "DatabaseConnection.hpp"
+#include "DatabaseConnection.h"
 
 void DatabaseMigrations::runMigrations(DatabaseConnection& db) {
 	try {
