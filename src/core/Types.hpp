@@ -98,12 +98,12 @@ namespace MoHSES {
 		AMM::UUID id;
 	};
 
-	namespace MoHSES {
-		namespace Status {
-			static const std::string NOT_RUNNING = "NOT RUNNING";
-			static const std::string RUNNING = "RUNNING";
-			static const std::string STOPPED = "STOPPED";
-			static const std::string PAUSED = "PAUSED";
-		}
+
+	namespace Status {
+		static const std::string NOT_RUNNING = "NOT RUNNING";
+		static const std::string RUNNING = "RUNNING";
+		static const std::string STOPPED = "STOPPED";
+		static const std::string PAUSED = "PAUSED";
 	}
+	
 }

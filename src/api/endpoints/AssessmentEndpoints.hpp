@@ -95,7 +95,7 @@ private:
 			response.headers()
 					.add<Pistache::Http::Header::ContentType>(MIME(Application, Json));
 			response.send(Pistache::Http::Code::Created,
-			              "{\"message\":\"Assessment created successfully\"}");
+			              R"({"message":"Assessment created successfully"})");
 		}
 		catch (const std::exception& e) {
 			throw ValidationException("Failed to create assessment: " +
@@ -118,7 +118,7 @@ private:
 			response.headers()
 					.add<Pistache::Http::Header::ContentType>(MIME(Application, Json));
 			response.send(Pistache::Http::Code::Ok,
-			              "{\"message\":\"Assessment updated successfully\"}");
+			              R"({"message":"Assessment updated successfully"})");
 		}
 		catch (const std::exception& e) {
 			throw ValidationException("Failed to update assessment: " +
@@ -138,7 +138,7 @@ private:
 		response.headers()
 				.add<Pistache::Http::Header::ContentType>(MIME(Application, Json));
 		response.send(Pistache::Http::Code::Ok,
-		              "{\"message\":\"Assessment deleted successfully\"}");
+		              R"({"message":"Assessment deleted successfully"})");
 		return Pistache::Rest::Route::Result::Ok;
 	}
 
@@ -163,7 +163,7 @@ private:
 			response.headers()
 					.add<Pistache::Http::Header::ContentType>(MIME(Application, Json));
 			response.send(Pistache::Http::Code::Ok,
-			              "{\"message\":\"Performance assessment published\"}");
+			              R"({"message":"Performance assessment published"})");
 		}
 		catch (const JsonUtils::ParseException& e) {
 			throw ValidationException("Invalid request format: " +

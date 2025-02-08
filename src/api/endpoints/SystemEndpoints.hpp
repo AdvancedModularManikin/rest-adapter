@@ -152,7 +152,7 @@ private:
 
 			addResponseHeaders(response);
 			response.send(Pistache::Http::Code::Ok,
-			              "{\"message\":\"Command executed successfully\"}");
+			              R"({"message":"Command executed successfully"})");
 		}
 		catch (const std::exception& e) {
 			throw ValidationException("Failed to execute command: " +
@@ -170,7 +170,7 @@ private:
 
 			addResponseHeaders(response);
 			response.send(Pistache::Http::Code::Ok,
-			              "{\"message\":\"Physiology modification published successfully\"}");
+			              R"({"message":"Physiology modification published successfully"})");
 		}
 		catch (const JsonUtils::ParseException& e) {
 			throw ValidationException("Invalid request format: " + std::string(e.what()));
@@ -191,7 +191,7 @@ private:
 
 			addResponseHeaders(response);
 			response.send(Pistache::Http::Code::Ok,
-			              "{\"message\":\"Render modification published successfully\"}");
+			              R"({"message":"Render modification published successfully"})");
 		}
 		catch (const JsonUtils::ParseException& e) {
 			throw ValidationException("Invalid request format: " + std::string(e.what()));

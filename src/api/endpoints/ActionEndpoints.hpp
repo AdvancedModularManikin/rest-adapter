@@ -80,7 +80,7 @@ private:
 			response.headers()
 					.add<Pistache::Http::Header::ContentType>(MIME(Application, Json));
 			response.send(Pistache::Http::Code::Created,
-			              "{\"message\":\"Action created successfully\"}");
+			              R"({"message":"Action created successfully"})");
 		}
 		catch (const JsonUtils::ParseException& e) {
 			throw ValidationException("Invalid request format: " +
@@ -105,7 +105,7 @@ private:
 			response.headers()
 					.add<Pistache::Http::Header::ContentType>(MIME(Application, Json));
 			response.send(Pistache::Http::Code::Ok,
-			              "{\"message\":\"Action updated successfully\"}");
+			              R"({"message":"Action updated successfully"})");
 		}
 		catch (const JsonUtils::ParseException& e) {
 			throw ValidationException("Invalid request format: " +
@@ -126,7 +126,7 @@ private:
 		response.headers()
 				.add<Pistache::Http::Header::ContentType>(MIME(Application, Json));
 		response.send(Pistache::Http::Code::Ok,
-		              "{\"message\":\"Action deleted successfully\"}");
+		              R"({"message":"Action deleted successfully"})");
 		return Pistache::Rest::Route::Result::Ok;
 	}
 };

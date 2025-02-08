@@ -30,12 +30,12 @@ namespace {
 	}
 
 	void setupSignalHandling() {
-		/*struct sigaction sa;
+		struct sigaction sa;
 		sa.sa_handler = signalHandler;
 		sigemptyset(&sa.sa_mask);
 		sa.sa_flags = 0;
 		sigaction(SIGINT, &sa, NULL);
-		sigaction(SIGTERM, &sa, NULL);*/
+		sigaction(SIGTERM, &sa, NULL);
 	}
 
 	void setupLogging() {

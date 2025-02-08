@@ -51,7 +51,7 @@ public:
 			std::filesystem::rename(tempPath, path);
 		}
 		catch (const std::exception& e) {
-			LOG_ERROR << "Error writing file " << path << ": " << e.what();
+			LOG_ERROR << "Error writing file " << path.string() << ": " << e.what();
 			throw FileException(std::string("Failed to write file: ") + e.what());
 		}
 	}

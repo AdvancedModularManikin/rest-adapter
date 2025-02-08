@@ -1,0 +1,424 @@
+openapi: 3.0.0
+info:
+  title: MoHSES REST API
+  description: REST API for MoHSES Core Modules
+  version: 1.5.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+components:
+  schemas:
+    Action:
+      type: object
+      properties:
+        name:
+          type: string
+        content:
+          type: string
+
+    Assessment:
+      type: object
+      properties:
+        name:
+          type: string
+        content:
+          type: string
+
+    PerformanceAssessment:
+      type: object
+      properties:
+        location:
+          type: string
+        practitioner:
+          type: string
+        type:
+          type: string
+
+    Module:
+      type: object
+      properties:
+        id:
+          type: string
+        guid:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+
+    ModuleCounts:
+      type: object
+      properties:
+        total:
+          type: integer
+        active:
+          type: integer
+        inactive:
+          type: integer
+
+    Status:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+
+    Instance:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+
+    PhysiologyModification:
+      type: object
+      required:
+        - type
+        - location
+        - practitioner
+        - payload
+      properties:
+        type:
+          type: string
+          description: Type of physiological modification
+        location:
+          type: string
+          description: Location for the modification
+        practitioner:
+          type: string
+          description: Practitioner performing the modification
+        payload:
+          type: string
+          description: Payload data for the modification
+
+    RenderModification:
+        type: object
+        required:
+          - type
+          - location
+          - practitioner
+          - payload
+        properties:
+          type:
+            type: string
+            description: Type of render modification
+          location:
+            type: string
+            description: Location for the modification
+          practitioner:
+            type: string
+            description: Practitioner performing the modification
+          payload:
+            type: string
+            description: Payload data for the modification
+
+paths:
+  /actions:
+    get:
+      summary: Get all actions
+      responses:
+        '200':
+          description: List of actions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Action'
+
+  /action/{name}:
+    get:
+      summary: Get action by name
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Action details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Action'
+        '404':
+          description: Action not found
+
+    put:
+      summary: Update action
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Action'
+      responses:
+        '200':
+          description: Action updated
+        '404':
+          description: Action not found
+
+    delete:
+      summary: Delete action
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Action deleted
+        '404':
+          description: Action not found
+  /assessments:
+    get:
+      summary: Get all assessments
+      responses:
+        '200':
+          description: List of assessments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Assessment'
+
+  /assessment/{name}:
+    get:
+      summary: Get assessment by name
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Assessment details
+          content:
+            text/csv:
+              schema:
+                type: string
+        '404':
+          description: Assessment not found
+
+    post:
+      summary: Create assessment
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+      responses:
+        '201':
+          description: Assessment created
+
+    put:
+      summary: Update assessment
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Assessment updated
+        '404':
+          description: Assessment not found
+
+    delete:
+      summary: Delete assessment
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Assessment deleted
+        '404':
+          description: Assessment not found
+  /topic/performance_assessment:
+    post:
+      summary: Execute performance assessment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PerformanceAssessment'
+      responses:
+        '200':
+          description: Performance assessment executed
+
+  /modules:
+    get:
+      summary: Get all modules
+      responses:
+        '200':
+          description: List of modules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Module'
+
+  /modules/count:
+    get:
+      summary: Get module counts
+      responses:
+        '200':
+          description: Module counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModuleCounts'
+
+  /modules/other:
+    get:
+      summary: Get other modules
+      responses:
+        '200':
+          description: List of other module names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /module/id/{id}:
+    get:
+      summary: Get module by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Module details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Module'
+        '404':
+          description: Module not found
+  /ready:
+    get:
+      summary: Check if system is ready
+      responses:
+        '200':
+          description: System ready status
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /debug:
+    get:
+      summary: Enable debug mode
+      responses:
+        '200':
+          description: Debug mode enabled
+
+  /instance:
+    get:
+      summary: Get instance information
+      responses:
+        '200':
+          description: Instance details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Instance'
+
+  /shutdown:
+    get:
+      summary: Initiate system shutdown
+      responses:
+        '200':
+          description: Shutdown initiated
+
+  /execute:
+    post:
+      summary: Execute command
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payload:
+                  type: string
+              required:
+                - payload
+      responses:
+        '200':
+          description: Command executed
+
+  /topic/physiology_modification:
+    post:
+      summary: Execute physiology modification
+      description: Modify physiological parameters of the simulation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhysiologyModification'
+      responses:
+        '200':
+          description: Physiology modification executed successfully
+        '400':
+          description: Invalid request format
+        '500':
+          description: Failed to execute physiology modification
+
+  /topic/render_modification:
+    post:
+      summary: Execute render modification
+      description: Modify visual aspects of the simulation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenderModification'
+      responses:
+        '200':
+          description: Render modification executed successfully
+        '400':
+          description: Invalid request format
+        '500':
+          description: Failed to execute render modification
