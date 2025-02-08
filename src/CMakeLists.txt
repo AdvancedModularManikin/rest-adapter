@@ -4,7 +4,7 @@
 
 #add_executable(amm_rest_adapter RESTAdapterMain.cpp DatabaseConnection.hpp DatabaseQueries.hpp ResourceManager.hpp)
 
-add_executable(amm_rest_adapter RESTAdapterMain.cpp)
+add_executable(amm_rest_adapter main.cpp db/DatabaseMigrations.cpp)
 
 target_link_libraries(amm_rest_adapter
    PUBLIC amm_std

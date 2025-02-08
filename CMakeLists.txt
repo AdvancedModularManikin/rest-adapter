@@ -68,7 +68,8 @@ find_package(amm_std REQUIRED)
 
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${SQLITE3_INCLUDE_DIR})
-include_directories(includes)
+
+include_directories(src)
 add_subdirectory(src)
 
 file(COPY config DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
