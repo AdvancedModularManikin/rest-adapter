@@ -24,7 +24,12 @@
 namespace {
 	volatile sig_atomic_t g_running = 1;
 
-	void signalHandler(int) {
+	void signalHandler(int signum) {
+		if (signum == SIGINT) {
+			std::cout << "\nReceived Ctrl-C, initiating graceful shutdown...\n";
+		} else if (signum == SIGTERM) {
+			std::cout << "\nReceived termination signal, initiating graceful shutdown...\n";
+		}
 		g_running = 0;
 	}
 
@@ -32,9 +37,15 @@ namespace {
 		struct sigaction sa;
 		sa.sa_handler = signalHandler;
 		sigemptyset(&sa.sa_mask);
-		sa.sa_flags = 0;
-		sigaction(SIGINT, &sa, NULL);
-		sigaction(SIGTERM, &sa, NULL);
+		sa.sa_flags = SA_RESTART;
+
+		if (sigaction(SIGINT, &sa, NULL) == -1) {
+			LOG_ERROR << "Failed to set up SIGINT handler";
+		}
+		if (sigaction(SIGTERM, &sa, NULL) == -1) {
+			LOG_ERROR << "Failed to set up SIGTERM handler";
+		}
+		signal(SIGPIPE, SIG_IGN);
 	}
 
 	void setupLogging() {
@@ -113,17 +124,26 @@ public:
 	void run() {
 		try {
 			LOG_INFO << "Starting server listener loop...";
-			m_server->serve();
+			LOG_INFO << "Press Ctrl-C to shutdown gracefully";
+			std::thread serverThread([this]() {
+				m_server->serve();
+			});
 
 			// Main loop
 			while (g_running) {
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			}
 
+			m_server->shutdown();
+			if (serverThread.joinable()) {
+				serverThread.join();
+			}
+
 			shutdown();
 		}
 		catch (const std::exception& e) {
 			LOG_FATAL << "Runtime error: " << e.what();
+			m_server->shutdown();
 			shutdown();
 		}
 	}
@@ -131,11 +151,22 @@ public:
 	void shutdown() {
 		LOG_INFO << "Shutting down server...";
 
-		if (m_server) {
-			m_server->shutdown();
-		}
+		// Set timeout for shutdown operations
+		const auto timeout = std::chrono::seconds(5);
+		auto start = std::chrono::steady_clock::now();
 
-		// Cleanup in reverse order of initialization
+		if (m_server) {
+			// Make sure server is shut down with timeout
+			while (m_server && std::chrono::steady_clock::now() - start < timeout) {
+				try {
+					m_server->shutdown();
+					break;
+				} catch (const std::exception &e) {
+					LOG_ERROR << "Error during server shutdown: " << e.what();
+					std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				}
+			}
+		}
 		m_router.reset();
 		MoHSESManager::getInstance().shutdown();
 		m_db.reset();

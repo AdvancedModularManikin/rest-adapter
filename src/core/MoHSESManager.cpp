@@ -48,7 +48,6 @@ void MoHSESManager::shutdown() {
 	try {
 		m_manager = nullptr;
 		m_initialized = false;
-		LOG_INFO << "MoHSES Manager shutdown complete";
 	}
 	catch (const std::exception& e) {
 		LOG_ERROR << "Error during MoHSES Manager shutdown: " << e.what();
