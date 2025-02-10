@@ -66,7 +66,6 @@ pkg_check_modules(Pistache REQUIRED IMPORTED_TARGET libpistache)
 
 find_package(amm_std REQUIRED)
 
-#include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${SQLITE3_INCLUDE_DIR})
 
 include_directories(src)

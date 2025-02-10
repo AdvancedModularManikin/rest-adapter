@@ -17,7 +17,7 @@ The REST Adapter allows for web endpoints to send and receive data on the MoHSES
 ### Installation
 ```bash
     $ git clone https://github.com/AdvancedModularManikin/rest-adapter
-    $ mkdir rest-adapter/build && cd tcp-bridge/build
+    $ mkdir rest-adapter/build && cd rest-adapter/build
     $ cmake ..
     $ cmake --build . --target install
 ```
