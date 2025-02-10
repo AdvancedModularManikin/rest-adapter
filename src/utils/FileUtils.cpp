@@ -53,7 +53,7 @@ void FileUtils::appendToFile(const std::filesystem::path& path, const std::strin
 		file.flush();
 	}
 	catch (const std::exception& e) {
-		LOG_ERROR << "Error appending to file " << path << ": " << e.what();
+		LOG_ERROR << "Error appending to file " << path.string() << ": " << e.what();
 		throw FileException(std::string("Failed to append to file: ") + e.what());
 	}
 }
@@ -67,7 +67,7 @@ bool FileUtils::deleteFile(const std::filesystem::path& path) {
 		return true;
 	}
 	catch (const std::exception& e) {
-		LOG_ERROR << "Error deleting file " << path << ": " << e.what();
+		LOG_ERROR << "Error deleting file " << path.string() << ": " << e.what();
 		throw FileException(std::string("Failed to delete file: ") + e.what());
 	}
 }
@@ -85,7 +85,7 @@ std::string FileUtils::getLastModifiedTime(const std::filesystem::path& path) {
 		return ss.str();
 	}
 	catch (const std::exception& e) {
-		LOG_ERROR << "Error getting last modified time for " << path << ": " << e.what();
+		LOG_ERROR << "Error getting last modified time for " << path.string() << ": " << e.what();
 		throw FileException(std::string("Failed to get last modified time: ") + e.what());
 	}
 }
@@ -99,7 +99,7 @@ uintmax_t FileUtils::getFileSize(const std::filesystem::path& path) {
 		return std::filesystem::file_size(path);
 	}
 	catch (const std::exception& e) {
-		LOG_ERROR << "Error getting file size for " << path << ": " << e.what();
+		LOG_ERROR << "Error getting file size for " << path.string() << ": " << e.what();
 		throw FileException(std::string("Failed to get file size: ") + e.what());
 	}
 }
@@ -111,7 +111,7 @@ void FileUtils::copyFile(const std::filesystem::path& from, const std::filesyste
 		                           std::filesystem::copy_options::overwrite_existing);
 	}
 	catch (const std::exception& e) {
-		LOG_ERROR << "Error copying file from " << from << " to " << to << ": " << e.what();
+		LOG_ERROR << "Error copying file from " << from.string() << " to " << to.string() << ": " << e.what();
 		throw FileException(std::string("Failed to copy file: ") + e.what());
 	}
 }
@@ -122,7 +122,7 @@ void FileUtils::moveFile(const std::filesystem::path& from, const std::filesyste
 		std::filesystem::rename(from, to);
 	}
 	catch (const std::exception& e) {
-		LOG_ERROR << "Error moving file from " << from << " to " << to << ": " << e.what();
+		LOG_ERROR << "Error moving file from " << from.string() << " to " << to.string() << ": " << e.what();
 		throw FileException(std::string("Failed to move file: ") + e.what());
 	}
 }
@@ -145,7 +145,7 @@ std::vector<std::filesystem::path> FileUtils::listFiles(
 		}
 	}
 	catch (const std::exception& e) {
-		LOG_ERROR << "Error listing files in " << directory << ": " << e.what();
+		LOG_ERROR << "Error listing files in " << directory.string() << ": " << e.what();
 		throw FileException(std::string("Failed to list files: ") + e.what());
 	}
 	return files;
@@ -156,7 +156,7 @@ void FileUtils::createDirectories(const std::filesystem::path& path) {
 		std::filesystem::create_directories(path);
 	}
 	catch (const std::exception& e) {
-		LOG_ERROR << "Error creating directories " << path << ": " << e.what();
+		LOG_ERROR << "Error creating directories " << path.string() << ": " << e.what();
 		throw FileException(std::string("Failed to create directories: ") + e.what());
 	}
 }
