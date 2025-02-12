@@ -45,10 +45,26 @@ void DatabaseConnection::initializeDatabase() {
 	try {
 		// Run migrations
 		DatabaseMigrations::runMigrations(*this);
-	}
-	catch (const sqlite::sqlite_exception& e) {
+
+		// Verify table exists and has correct schema
+		bool tableExists = false;
+		(*m_db) << "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='module_capabilities';"
+		        >> tableExists;
+
+		if (!tableExists) {
+			LOG_ERROR << "module_capabilities table does not exist after migration";
+			throw DatabaseException("Table initialization failed: module_capabilities table not found");
+		}
+
+		// Try to get table info
+		(*m_db) << "PRAGMA table_info(module_capabilities);";
+		LOG_DEBUG << "module_capabilities table verified successfully";
+
+	} catch (const sqlite::sqlite_exception& e) {
 		LOG_ERROR << "Database initialization failed: " << e.what();
-		throw DatabaseException("Database initialization failed: " +
-		                        std::string(e.what()));
+		LOG_ERROR << "SQL State: " << e.get_code();
+		LOG_ERROR << "Extended Error Code: " << e.get_extended_code();
+		LOG_ERROR << "Query: " << e.get_sql();
+		throw DatabaseException("Database initialization failed: " + std::string(e.what()));
 	}
 }

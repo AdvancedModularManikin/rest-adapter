@@ -46,12 +46,13 @@ public:
 	void executeTransaction(Func&& func);
 
 	int64_t getLastInsertId() const;
+	void initializeDatabase();
 
 private:
 	std::unique_ptr<sqlite::database> m_db;
 	mutable std::mutex m_mutex;
+	bool verifyTables() const;
 
-	void initializeDatabase();
 };
 
 // Template implementations must remain in the header

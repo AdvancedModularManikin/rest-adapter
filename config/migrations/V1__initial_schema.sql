@@ -43,9 +43,9 @@ CREATE INDEX IF NOT EXISTS idx_capabilities_name ON module_capabilities(module_n
 
 -- Triggers
 CREATE TRIGGER IF NOT EXISTS update_module_capabilities_timestamp
-AFTER UPDATE ON module_capabilities
+    AFTER UPDATE ON module_capabilities
 BEGIN
-UPDATE module_capabilities
-SET updated_at = CURRENT_TIMESTAMP
-WHERE module_id = NEW.module_id;
+    UPDATE module_capabilities
+    SET updated_at = CURRENT_TIMESTAMP
+    WHERE module_id = NEW.module_id;
 END;

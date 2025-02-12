@@ -5,6 +5,8 @@
 #include <filesystem>
 #include <fstream>
 #include <regex>
+#include <sstream>
+#include <algorithm>
 
 #include "amm/BaseLogger.h"
 
@@ -32,4 +34,7 @@ private:
 	static void executeMigrations(DatabaseConnection& db,
 	                              const std::vector<Migration>& migrations);
 	static bool isMigrationApplied(DatabaseConnection& db, int version);
+
+	// New helper method for splitting SQL statements
+	static std::vector<std::string> splitStatements(const std::string& sql);
 };
