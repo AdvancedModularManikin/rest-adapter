@@ -57,26 +57,27 @@ std::string scenario_path = "./static/scenarios/";
 std::mutex nds_mutex;
 std::map<std::string, double> nodeDataStorage;
 
-std::map<std::string, std::string> statusStorage = {{"STATUS",         "NOT RUNNING"},
-                                                    {"TICK",           "0"},
-                                                    {"TIME",           "0"},
-                                                    {"SCENARIO",       ""},
-                                                    {"STATE",          ""},
-                                                    {"AIR_SUPPLY",     ""},
-                                                    {"CLEAR_SUPPLY",   ""},
-                                                    {"BLOOD_SUPPLY",   ""},
-                                                    {"FLUIDICS_STATE", ""},
-                                                    {"BATTERY1",       ""},
-                                                    {"BATTERY2",       ""},
-                                                    {"EXT_POWER",      ""},
-                                                    {"IVARM_STATE",    ""},
-                                                    {"MONITOR_ECG",     ""},
-                                                    {"MONITOR_PULSEOX", ""},
-                                                    {"MONITOR_NIBP",    ""},
-                                                    {"MONITOR_TEMP",    ""},
-                                                    {"MONITOR_ARTLINE", ""},
-                                                    {"MONITOR_ETCO2",   ""},
-                                                   };
+std::map<std::string, std::string> statusStorage = {
+    {"STATUS", "NOT RUNNING"},
+    {"TICK", "0"},
+    {"TIME", "0"},
+    {"SCENARIO", ""},
+    {"STATE", ""},
+    {"AIR_SUPPLY", ""},
+    {"CLEAR_SUPPLY", ""},
+    {"BLOOD_SUPPLY", ""},
+    {"FLUIDICS_STATE", ""},
+    {"BATTERY1", ""},
+    {"BATTERY2", ""},
+    {"EXT_POWER", ""},
+    {"IVARM_STATE", ""},
+    {"MONITOR_ECG", ""},
+    {"MONITOR_PULSEOX", ""},
+    {"MONITOR_NIBP", ""},
+    {"MONITOR_TEMP", ""},
+    {"MONITOR_ARTLINE", ""},
+    {"MONITOR_ETCO2", ""},
+};
 std::vector<std::string> labsStorage;
 
 bool m_runThread = false;
@@ -91,30 +92,31 @@ const string loadPatientPrefix = "LOAD_PATIENT:";
 void SendReset();
 
 /// Resets database tables for labs.
-void ResetLabs() {
+void ResetLabs()
+{
     labsStorage.clear();
     std::ostringstream labRow;
 
     labRow << "Time,";
 
-// POCT
+    // POCT
     labRow << "POCT,";
     labRow << "Sodium (Na),";
     labRow << "Potassium (K),";
     labRow << "Chloride (Cl),";
     labRow << "TCO2,";
-    labRow << "Anion Gap,"; // Anion Gap
+    labRow << "Anion Gap,";             // Anion Gap
     labRow << "Ionized Calcium (iCa),"; // Ionized Calcium (iCa)
     labRow << "Glucose (Glu),";
     labRow << "Urea Nitrogen (BUN)/Urea,";
     labRow << "Creatinine (Crea),";
 
-// Hematology
+    // Hematology
     labRow << "Hematology,";
     labRow << "Hematocrit (Hct),";
     labRow << "Hemoglobin (Hgb),";
 
-//ABG
+    // ABG
     labRow << "ABG,";
     labRow << "Lactate,";
     labRow << "pH,";
@@ -127,7 +129,7 @@ void ResetLabs() {
     labRow << "SpO2,";
     labRow << "COHb,";
 
-// VBG
+    // VBG
     labRow << "VBG,";
     labRow << "Lactate,";
     labRow << "pH,";
@@ -137,19 +139,17 @@ void ResetLabs() {
     labRow << "Base Excess (BE),";
     labRow << "COHb,";
 
-
     // BMP
     labRow << "BMP,";
     labRow << "Sodium (Na),";
     labRow << "Potassium (K),";
     labRow << "Chloride (Cl),";
     labRow << "TCO2,";
-    labRow << "Anion Gap,"; // Anion Gap
+    labRow << "Anion Gap,";             // Anion Gap
     labRow << "Ionized Calcium (iCa),"; // Ionized Calcium (iCa)
     labRow << "Glucose (Glu),";
     labRow << "Urea Nitrogen (BUN)/Urea,";
     labRow << "Creatinine (Crea),";
-
 
     // CBC
     labRow << "CBC,";
@@ -159,7 +159,7 @@ void ResetLabs() {
     labRow << "Hct,";
     labRow << "Plt,";
 
-// CMP
+    // CMP
     labRow << "CMP,";
     labRow << "Albumin,";
     labRow << "ALP,"; // ALP
@@ -180,12 +180,13 @@ void ResetLabs() {
 }
 
 /// Add to database tables for labs.
-void AppendLabRow() {
+void AppendLabRow()
+{
     std::ostringstream labRow;
 
     labRow << nodeDataStorage["SIM_TIME"] << ",";
 
-// POCT
+    // POCT
     labRow << "POCT,";
     labRow << nodeDataStorage["Substance_Sodium"] << ",";
     labRow << nodeDataStorage["MetabolicPanel_Potassium"] << ",";
@@ -197,12 +198,12 @@ void AppendLabRow() {
     labRow << nodeDataStorage["BloodChemistry_BloodUreaNitrogen_Concentration"] << ",";
     labRow << nodeDataStorage["Substance_Creatinine_Concentration"] << ",";
 
-// Hematology
+    // Hematology
     labRow << "Hematology,";
     labRow << nodeDataStorage["BloodChemistry_Hemaocrit"] << ",";
     labRow << nodeDataStorage["Substance_Hemoglobin_Concentration"] << ",";
 
-//ABG
+    // ABG
     labRow << "ABG,";
     labRow << nodeDataStorage["Substance_Lactate_Concentration_mmol"] << ",";
     labRow << nodeDataStorage["BloodChemistry_BloodPH"] << ",";
@@ -215,7 +216,7 @@ void AppendLabRow() {
     labRow << nodeDataStorage["BloodChemistry_Oxygen_Saturation"] << ",";
     labRow << nodeDataStorage["Substance_Carboxyhemoglobin_Concentration"] << ",";
 
-// VBG
+    // VBG
     labRow << "VBG,";
     labRow << nodeDataStorage["Substance_Lactate_Concentration_mmol"] << ",";
     labRow << nodeDataStorage["BloodChemistry_BloodPH"] << ",";
@@ -224,7 +225,6 @@ void AppendLabRow() {
     labRow << nodeDataStorage["Substance_Bicarbonate"] << ",";
     labRow << nodeDataStorage["Substance_BaseExcess"] << ",";
     labRow << nodeDataStorage["Substance_Carboxyhemoglobin_Concentration"] << ",";
-
 
     // BMP
     labRow << "BMP,";
@@ -238,7 +238,6 @@ void AppendLabRow() {
     labRow << nodeDataStorage["BloodChemistry_BloodUreaNitrogen_Concentration"] << ",";
     labRow << nodeDataStorage["Substance_Creatinine_Concentration"] << ",";
 
-
     // CBC
     labRow << "CBC,";
     labRow << nodeDataStorage["BloodChemistry_WhiteBloodCell_Count"] << ",";
@@ -247,7 +246,7 @@ void AppendLabRow() {
     labRow << nodeDataStorage["BloodChemistry_Hemaocrit"] << ",";
     labRow << nodeDataStorage["CompleteBloodCount_Platelet"] << ",";
 
-// CMP
+    // CMP
     labRow << "CMP,";
     labRow << nodeDataStorage["Substance_Albumin_Concentration"] << ",";
     labRow << ","; // ALP
@@ -267,12 +266,15 @@ void AppendLabRow() {
     labsStorage.push_back(labRow.str());
 }
 
-std::string ExtractTypeFromRenderMod(std::string payload) {
+std::string ExtractTypeFromRenderMod(std::string payload)
+{
     std::size_t pos = payload.find("type=");
-    if (pos != std::string::npos) {
+    if (pos != std::string::npos)
+    {
         std::string p1 = payload.substr(pos + 6);
         std::size_t pos2 = p1.find("\"");
-        if (pos2 != std::string::npos) {
+        if (pos2 != std::string::npos)
+        {
             std::string p2 = p1.substr(0, pos2);
             return p2;
         }
@@ -280,12 +282,15 @@ std::string ExtractTypeFromRenderMod(std::string payload) {
     return {};
 };
 
-std::string ExtractManikinIDFromString(std::string in) {
+std::string ExtractManikinIDFromString(std::string in)
+{
     std::size_t pos = in.find("mid=");
-    if (pos != std::string::npos) {
+    if (pos != std::string::npos)
+    {
         std::string mid1 = in.substr(pos + 4);
         std::size_t pos1 = mid1.find(";");
-        if (pos1 != std::string::npos) {
+        if (pos1 != std::string::npos)
+        {
             std::string mid2 = mid1.substr(0, pos1);
             return mid2;
         }
@@ -295,10 +300,11 @@ std::string ExtractManikinIDFromString(std::string in) {
 }
 
 /// Core logic container for DDS Manager functions.
-class RESTListener : public ListenerInterface {
+class RESTListener : public ListenerInterface
+{
 public:
-
-    void onNewStatus(AMM::Status &st, SampleInfo_t *info) {
+    void onNewStatus(AMM::Status &st, SampleInfo_t *info)
+    {
         ostringstream statusValue;
         statusValue << AMM::Utility::EStatusValueStr(st.value());
 
@@ -306,62 +312,92 @@ public:
                   << st.capability() << "] Status = " << statusValue.str() << " (" << st.value() << ")";
         // Message = " << st.message();
 
-        if ( st.module_name() == "AMM_FluidManager" || st.module_name() == "Torso_Control" )
+        if (st.module_name() == "AMM_FluidManager" || st.module_name() == "Torso_Control")
         {
-            if ( st.capability() == "fluidics" ) {
+            if (st.capability() == "fluidics")
+            {
                 statusStorage["FLUIDICS_STATE"] = statusValue.str();
-            } else if ( st.capability() == "clear_supply" ) {
+            }
+            else if (st.capability() == "clear_supply")
+            {
                 statusStorage["CLEAR_SUPPLY"] = statusValue.str();
-            } else if ( st.capability() == "blood_supply") {
+            }
+            else if (st.capability() == "blood_supply")
+            {
                 statusStorage["BLOOD_SUPPLY"] = statusValue.str();
-            } else if ( st.capability() == "air_supply") {
+            }
+            else if (st.capability() == "air_supply")
+            {
                 statusStorage["AIR_SUPPLY"] = statusValue.str();
                 // parse st.message() to double p; [p] = psi
-                try {
+                try
+                {
                     double p = std::stod(st.message());
                     nodeDataStorage["Air_Pressure"] = p;
-                } catch (const std::invalid_argument &) {
+                }
+                catch (const std::invalid_argument &)
+                {
                     nodeDataStorage["Air_Pressure"] = 0.0;
-                } catch (const std::out_of_range &) {
+                }
+                catch (const std::out_of_range &)
+                {
                 }
             }
         }
 
-        if ( st.module_name() == "AJAMS_Services" )
+        if (st.module_name() == "AJAMS_Services")
         {
-            if ( st.capability() == "battery-1" ) {
+            if (st.capability() == "battery-1")
+            {
                 statusStorage["BATTERY1"] = statusValue.str();
                 // parse st.message() to double soc; [soc] = %
-                try {
+                try
+                {
                     double soc = std::stod(st.message());
                     nodeDataStorage["Battery1_SOC"] = soc;
-                } catch (const std::invalid_argument &) {
-                    nodeDataStorage["Battery1_SOC"] = 0.0;
-                } catch (const std::out_of_range &) {
                 }
-            } else if ( st.capability() == "battery-2" ) {
+                catch (const std::invalid_argument &)
+                {
+                    nodeDataStorage["Battery1_SOC"] = 0.0;
+                }
+                catch (const std::out_of_range &)
+                {
+                }
+            }
+            else if (st.capability() == "battery-2")
+            {
                 statusStorage["BATTERY2"] = statusValue.str();
                 // parse st.message() to double soc; [soc] = %
-                try {
+                try
+                {
                     double soc = std::stod(st.message());
                     nodeDataStorage["Battery2_SOC"] = soc;
-                } catch (const std::invalid_argument &) {
-                    nodeDataStorage["Battery2_SOC"] = 0.0;
-                } catch (const std::out_of_range &) {
                 }
-            } else if ( st.capability() == "ext_power" ) {
+                catch (const std::invalid_argument &)
+                {
+                    nodeDataStorage["Battery2_SOC"] = 0.0;
+                }
+                catch (const std::out_of_range &)
+                {
+                }
+            }
+            else if (st.capability() == "ext_power")
+            {
                 statusStorage["EXT_POWER"] = statusValue.str();
             }
         }
 
-        if (st.capability() == "iv_detection") {
+        if (st.capability() == "iv_detection")
+        {
             statusStorage["IVARM_STATE"] = statusValue.str();
         }
     }
 
-    void onNewTick(AMM::Tick &t, SampleInfo_t *info) {
+    void onNewTick(AMM::Tick &t, SampleInfo_t *info)
+    {
         if (statusStorage["STATUS"].compare("NOT RUNNING") == 0 &&
-            t.frame() > lastTick) {
+            t.frame() > lastTick)
+        {
             statusStorage["STATUS"] = "RUNNING";
         }
         lastTick = t.frame();
@@ -369,124 +405,182 @@ public:
         statusStorage["TIME"] = to_string(t.time());
     }
 
-    void onNewSimulationControl(AMM::SimulationControl &simControl, SampleInfo_t *info) {
-        switch (simControl.type()) {
-            case AMM::ControlType::RUN: {
-                statusStorage["STATUS"] = "RUNNING";
-                LOG_DEBUG << "SimControl received: Run sim.";
-                break;
-            }
+    void onNewSimulationControl(AMM::SimulationControl &simControl, SampleInfo_t *info)
+    {
+        switch (simControl.type())
+        {
+        case AMM::ControlType::RUN:
+        {
+            statusStorage["STATUS"] = "RUNNING";
+            LOG_DEBUG << "SimControl received: Run sim.";
+            break;
+        }
 
-            case AMM::ControlType::HALT: {
-                statusStorage["STATUS"] = "PAUSED";
-                break;
-            }
+        case AMM::ControlType::HALT:
+        {
+            statusStorage["STATUS"] = "PAUSED";
+            break;
+        }
 
-            case AMM::ControlType::RESET: {
-                LOG_DEBUG
-                        << "SimControl received: Reset simulation, clean up and prepare for next run.";
-                statusStorage["STATUS"] = "NOT RUNNING";
-                statusStorage["TICK"] = "0";
-                statusStorage["TIME"] = "0";
-                nodeDataStorage.clear();
-                ResetLabs();
-                break;
-            }
-
+        case AMM::ControlType::RESET:
+        {
+            LOG_DEBUG
+                << "SimControl received: Reset simulation, clean up and prepare for next run.";
+            statusStorage["STATUS"] = "NOT RUNNING";
+            statusStorage["TICK"] = "0";
+            statusStorage["TIME"] = "0";
+            nodeDataStorage.clear();
+            ResetLabs();
+            break;
+        }
         }
     }
 
-    void onNewCommand(AMM::Command &c, SampleInfo_t *info) {
+    void onNewCommand(AMM::Command &c, SampleInfo_t *info)
+    {
         std::string manikin_id = ExtractManikinIDFromString(c.message());
         LOG_INFO << "Got a command: " << c.message() << " for manikin " << manikin_id;
-        if (!c.message().compare(0, sysPrefix.size(), sysPrefix)) {
+        if (!c.message().compare(0, sysPrefix.size(), sysPrefix))
+        {
             std::string value = c.message().substr(sysPrefix.size());
-            if (value.find("START_SIM") != std::string::npos) {
+            if (value.find("START_SIM") != std::string::npos)
+            {
                 statusStorage["STATUS"] = "RUNNING";
-            } else if (value.find("STOP_SIM") != std::string::npos) {
+            }
+            else if (value.find("STOP_SIM") != std::string::npos)
+            {
                 statusStorage["STATUS"] = "STOPPED";
-            } else if (value.find("PAUSE_SIM") != std::string::npos) {
+            }
+            else if (value.find("PAUSE_SIM") != std::string::npos)
+            {
                 statusStorage["STATUS"] = "PAUSED";
-            } else if (value.find("RESET_SIM") != std::string::npos) {
+            }
+            else if (value.find("RESET_SIM") != std::string::npos)
+            {
                 statusStorage["STATUS"] = "NOT RUNNING";
                 statusStorage["TICK"] = "0";
                 statusStorage["TIME"] = "0";
                 nodeDataStorage.clear();
                 ResetLabs();
-            } else if (value.find("END_SIMULATION") != std::string::npos) {
+            }
+            else if (value.find("END_SIMULATION") != std::string::npos)
+            {
                 statusStorage["STATUS"] = "STOPPED";
                 statusStorage["TICK"] = "0";
                 statusStorage["TIME"] = "0";
                 nodeDataStorage.clear();
                 ResetLabs();
-            } else if (value.find("APPEND_LABS") != std::string::npos) {
+            }
+            else if (value.find("APPEND_LABS") != std::string::npos)
+            {
                 AppendLabRow();
-            } else if (value.find("CLEAR_LOG") != std::string::npos) {
-
-            } else if (value.find("RESTART_SERVICE") != std::string::npos) {
-		LOG_INFO << "Command: RESTART_SERVICE" << c.message();
-            } else if (!value.compare(0, loadPrefix.size(), loadPrefix)) {
+            }
+            else if (value.find("CLEAR_LOG") != std::string::npos)
+            {
+            }
+            else if (value.find("RESTART_SERVICE") != std::string::npos)
+            {
+                LOG_INFO << "Command: RESTART_SERVICE" << c.message();
+            }
+            else if (!value.compare(0, loadPrefix.size(), loadPrefix))
+            {
                 statusStorage["STATE"] = value.substr(loadPrefix.size());
                 SendReset();
-            } else if (!value.compare(0, loadScenarioPrefix.size(),
-                                      loadScenarioPrefix)) {
+            }
+            else if (!value.compare(0, loadScenarioPrefix.size(),
+                                    loadScenarioPrefix))
+            {
                 statusStorage["SCENARIO"] = value.substr(loadScenarioPrefix.size());
-            } else if (!value.compare(0, loadPatientPrefix.size(),
-                                      loadPatientPrefix)) {
+            }
+            else if (!value.compare(0, loadPatientPrefix.size(),
+                                    loadPatientPrefix))
+            {
                 statusStorage["PATIENT"] = value.substr(loadPatientPrefix.size());
             }
-        } else {
-            //LOG_TRACE << "Unknown AMM Command: " << c.message();
+        }
+        else
+        {
+            // LOG_TRACE << "Unknown AMM Command: " << c.message();
         }
     }
 
-    void onNewPhysiologyValue(AMM::PhysiologyValue &n, SampleInfo_t *info) {
+    void onNewPhysiologyValue(AMM::PhysiologyValue &n, SampleInfo_t *info)
+    {
         const std::lock_guard<std::mutex> lock(nds_mutex);
-        if (!isnan(n.value())) {
+        if (!isnan(n.value()))
+        {
             nodeDataStorage[n.name()] = n.value();
         }
     }
 
-    void onNewRenderModification(AMM::RenderModification &rendMod, SampleInfo_t *info) {
+    void onNewRenderModification(AMM::RenderModification &rendMod, SampleInfo_t *info)
+    {
         std::ostringstream messageOut;
         messageOut << "[AMM_Render_Modification]"
                    << "type=" << rendMod.type() << ";"
                    << "payload=" << rendMod.data();
         std::string stringOut = messageOut.str();
-        //LOG_DEBUG << "Render modification received from AMM: " << stringOut;
+        // LOG_DEBUG << "Render modification received from AMM: " << stringOut;
 
-        if ( rendMod.type().compare("CONNECT_ECG") == 0 ) {
+        if (rendMod.type().compare("CONNECT_ECG") == 0)
+        {
             statusStorage["MONITOR_ECG"] = "ON";
-        } else if ( rendMod.type().compare("DETACH_ECG") == 0 ) {
+        }
+        else if (rendMod.type().compare("DETACH_ECG") == 0)
+        {
             statusStorage["MONITOR_ECG"] = "OFF";
-        } else if ( rendMod.type().compare("CONNECT_PULSE_OX") == 0 ) {
+        }
+        else if (rendMod.type().compare("CONNECT_PULSE_OX") == 0)
+        {
             statusStorage["MONITOR_PULSEOX"] = "ON";
-        } else if ( rendMod.type().compare("DETACH_PULSE_OX") == 0 ) {
+        }
+        else if (rendMod.type().compare("DETACH_PULSE_OX") == 0)
+        {
             statusStorage["MONITOR_PULSEOX"] = "OFF";
-        } else if ( rendMod.type().compare("CONNECT_NIBP") == 0 ) {
+        }
+        else if (rendMod.type().compare("CONNECT_NIBP") == 0)
+        {
             statusStorage["MONITOR_NIBP"] = "ON";
-        } else if ( rendMod.type().compare("DETACH_NIBP") == 0 ) {
+        }
+        else if (rendMod.type().compare("DETACH_NIBP") == 0)
+        {
             statusStorage["MONITOR_NIBP"] = "OFF";
-        } else if ( rendMod.type().compare("CONNECT_TEMP_PROBE") == 0 ) {
+        }
+        else if (rendMod.type().compare("CONNECT_TEMP_PROBE") == 0)
+        {
             statusStorage["MONITOR_TEMP"] = "ON";
-        } else if ( rendMod.type().compare("DETACH_TEMP_PROBE") == 0 ) {
+        }
+        else if (rendMod.type().compare("DETACH_TEMP_PROBE") == 0)
+        {
             statusStorage["MONITOR_TEMP"] = "OFF";
-        } else if ( rendMod.type().compare("CONNECT_ART_LINE") == 0 ) {
+        }
+        else if (rendMod.type().compare("CONNECT_ART_LINE") == 0)
+        {
             statusStorage["MONITOR_ARTLINE"] = "ON";
-        } else if ( rendMod.type().compare("DETACH_ART_LINE") == 0 ) {
+        }
+        else if (rendMod.type().compare("DETACH_ART_LINE") == 0)
+        {
             statusStorage["MONITOR_ARTLINE"] = "OFF";
-        } else if ( rendMod.type().compare("CONNECT_ETCO2") == 0 ) {
+        }
+        else if (rendMod.type().compare("CONNECT_ETCO2") == 0)
+        {
             statusStorage["MONITOR_ETCO2"] = "ON";
-        } else if ( rendMod.type().compare("DETACH_ETCO2") == 0 ) {
+        }
+        else if (rendMod.type().compare("DETACH_ETCO2") == 0)
+        {
             statusStorage["MONITOR_ETCO2"] = "OFF";
-        } else if ( rendMod.type().compare("ATTACH_TO_PATIENT") == 0 ) {
+        }
+        else if (rendMod.type().compare("ATTACH_TO_PATIENT") == 0)
+        {
             statusStorage["MONITOR_ECG"] = "ON";
             statusStorage["MONITOR_PULSEOX"] = "ON";
             statusStorage["MONITOR_NIBP"] = "ON";
             statusStorage["MONITOR_TEMP"] = "ON";
             statusStorage["MONITOR_ARTLINE"] = "ON";
             statusStorage["MONITOR_ETCO2"] = "ON";
-        } else if ( rendMod.type().compare("DETACH_FROM_PATIENT") == 0 ) {
+        }
+        else if (rendMod.type().compare("DETACH_FROM_PATIENT") == 0)
+        {
             statusStorage["MONITOR_ECG"] = "OFF";
             statusStorage["MONITOR_PULSEOX"] = "OFF";
             statusStorage["MONITOR_NIBP"] = "OFF";
@@ -504,7 +598,8 @@ AMM::UUID m_uuid;
 
 database db("amm.db");
 
-void SendReset() {
+void SendReset()
+{
     AMM::SimulationControl simControl;
     auto ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
     simControl.timestamp(ms);
@@ -512,7 +607,8 @@ void SendReset() {
     mgr->WriteSimulationControl(simControl);
 }
 
-void PublishOperationalDescription() {
+void PublishOperationalDescription()
+{
     AMM::OperationalDescription od;
     od.name(moduleName);
     od.model("REST Adapter");
@@ -527,10 +623,10 @@ void PublishOperationalDescription() {
 }
 
 AMM::UUID SendEventRecord(
-        const std::string &location,
-        const std::string &practitioner,
-        const std::string &type
-) {
+    const std::string &location,
+    const std::string &practitioner,
+    const std::string &type)
+{
     LOG_DEBUG << "Publishing an event record: " << type;
     AMM::EventRecord er;
     AMM::FMA_Location fmaL;
@@ -547,9 +643,10 @@ AMM::UUID SendEventRecord(
 }
 
 void SendPhysiologyModification(
-        AMM::UUID &er_id,
-        const std::string &type,
-        const std::string &payload) {
+    AMM::UUID &er_id,
+    const std::string &type,
+    const std::string &payload)
+{
     LOG_DEBUG << "Publishing a phys mod: " << type;
     AMM::PhysiologyModification modInstance;
     AMM::UUID instUUID;
@@ -563,7 +660,8 @@ void SendPhysiologyModification(
 
 void SendRenderModification(AMM::UUID &er_id,
                             const std::string &type,
-                            const std::string &payload) {
+                            const std::string &payload)
+{
     LOG_DEBUG << "Publishing a render mod: " << type;
     AMM::RenderModification modInstance;
     AMM::UUID instUUID;
@@ -576,11 +674,12 @@ void SendRenderModification(AMM::UUID &er_id,
 }
 
 void SendPerformanceAssessment(
-        AMM::UUID &er_id,
-        const std::string &assessment_type,
-        const std::string &assessment_info,
-        const std::string &step,
-        const std::string &comment) {
+    AMM::UUID &er_id,
+    const std::string &assessment_type,
+    const std::string &assessment_info,
+    const std::string &step,
+    const std::string &comment)
+{
     LOG_INFO << "Publishing an assessment: " << assessment_type;
     AMM::Assessment assessInstance;
     AMM::UUID instUUID;
@@ -591,32 +690,41 @@ void SendPerformanceAssessment(
     mgr->WriteAssessment(assessInstance);
 }
 
-void SendCommand(const std::string &command) {
+void SendCommand(const std::string &command)
+{
     LOG_INFO << "Publishing a command:" << command;
-    if (!command.compare(0, sysPrefix.size(), sysPrefix)) {
+    if (!command.compare(0, sysPrefix.size(), sysPrefix))
+    {
         std::string value = command.substr(sysPrefix.size());
-        if (value.compare("START_SIM") == 0) {
+        if (value.compare("START_SIM") == 0)
+        {
             AMM::SimulationControl simControl;
             auto ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
             simControl.timestamp(ms);
             simControl.type(AMM::ControlType::RUN);
             mgr->WriteSimulationControl(simControl);
             statusStorage["STATUS"] = "RUNNING";
-        } else if (value.compare("STOP_SIM") == 0) {
+        }
+        else if (value.compare("STOP_SIM") == 0)
+        {
             AMM::SimulationControl simControl;
             auto ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
             simControl.timestamp(ms);
             simControl.type(AMM::ControlType::HALT);
             mgr->WriteSimulationControl(simControl);
             statusStorage["STATUS"] = "STOPPED";
-        } else if (value.compare("PAUSE_SIM") == 0) {
+        }
+        else if (value.compare("PAUSE_SIM") == 0)
+        {
             AMM::SimulationControl simControl;
             auto ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
             simControl.timestamp(ms);
             simControl.type(AMM::ControlType::HALT);
             mgr->WriteSimulationControl(simControl);
             statusStorage["STATUS"] = "PAUSED";
-        } else if (value.compare("RESET_SIM") == 0) {
+        }
+        else if (value.compare("RESET_SIM") == 0)
+        {
             statusStorage["STATUS"] = "NOT RUNNING";
             statusStorage["TICK"] = "0";
             statusStorage["TIME"] = "0";
@@ -627,25 +735,33 @@ void SendCommand(const std::string &command) {
             simControl.timestamp(ms);
             simControl.type(AMM::ControlType::RESET);
             mgr->WriteSimulationControl(simControl);
-        } else if (value.compare("SAVE_STATE") == 0) {
+        }
+        else if (value.compare("SAVE_STATE") == 0)
+        {
             AMM::SimulationControl simControl;
             auto ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
             simControl.timestamp(ms);
             simControl.type(AMM::ControlType::SAVE);
             mgr->WriteSimulationControl(simControl);
-        } else if (value.compare("RESTART_SERVICES") == 0) {
+        }
+        else if (value.compare("RESTART_SERVICES") == 0)
+        {
             // Execute restart request here. Do not forward.
-            // TODO: this functionality might be more appropriate for the module manager to handle 
+            // TODO: this functionality might be more appropriate for the module manager to handle
             //       the else statement below will forward. Module manager would receive the command and process
             std::string command = "supervisorctl start amm_startup";
             int result = boost::process::system(command);
-        } else {
+        }
+        else
+        {
             // Publish a SYS Command
             AMM::Command cmdInstance;
             cmdInstance.message(command);
             mgr->WriteCommand(cmdInstance);
         }
-    } else {
+    }
+    else
+    {
         // Publish some other command?
         AMM::Command cmdInstance;
         cmdInstance.message(command);
@@ -653,39 +769,46 @@ void SendCommand(const std::string &command) {
     }
 }
 
-void printCookies(const Http::Request &req) {
+void printCookies(const Http::Request &req)
+{
     auto cookies = req.cookies();
     std::cout << "Cookies: [" << std::endl;
     const std::string indent(4, ' ');
-    for (const auto &c : cookies) {
+    for (const auto &c : cookies)
+    {
         std::cout << indent << c.name << " = " << c.value << std::endl;
     }
     std::cout << "]" << std::endl;
 }
 
-namespace Generic {
+namespace Generic
+{
 
-    void handleReady(const Rest::Request &request, Http::ResponseWriter response) {
+    void handleReady(const Rest::Request &request, Http::ResponseWriter response)
+    {
         response.send(Http::Code::Ok, "1");
     }
 }
 
-class DDSEndpoint {
+class DDSEndpoint
+{
     static constexpr size_t DefaultMaxPayload = 1024102410;
 
 public:
     explicit DDSEndpoint(Address addr)
-            : httpEndpoint(std::make_shared<Http::Endpoint>(addr)) {}
+        : httpEndpoint(std::make_shared<Http::Endpoint>(addr)) {}
 
-    void init(int thr = 2) {
+    void init(int thr = 2)
+    {
         auto opts = Http::Endpoint::options()
-                .threads(thr)
-                .flags(Tcp::Options::ReuseAddr);
+                        .threads(thr)
+                        .flags(Tcp::Options::ReuseAddr);
         httpEndpoint->init(opts);
         setupRoutes();
     }
 
-    void start() {
+    void start()
+    {
         httpEndpoint->setHandler(router.handler());
         httpEndpoint->serveThreaded();
     }
@@ -693,7 +816,8 @@ public:
     void shutdown() { httpEndpoint->shutdown(); }
 
 private:
-    void setupRoutes() {
+    void setupRoutes()
+    {
         using namespace Rest;
 
         Routes::Get(router, "/instance", Routes::bind(&DDSEndpoint::getInstance, this));
@@ -760,13 +884,13 @@ private:
                         Routes::bind(&DDSEndpoint::executeOptions, this));
 
         Routes::Post(
-                router, "/topic/physiology_modification",
-                Routes::bind(&DDSEndpoint::executePhysiologyModification, this));
+            router, "/topic/physiology_modification",
+            Routes::bind(&DDSEndpoint::executePhysiologyModification, this));
         Routes::Post(router, "/topic/render_modification",
                      Routes::bind(&DDSEndpoint::executeRenderModification, this));
         Routes::Post(
-                router, "/topic/performance_assessment",
-                Routes::bind(&DDSEndpoint::executePerformanceAssessment, this));
+            router, "/topic/performance_assessment",
+            Routes::bind(&DDSEndpoint::executePerformanceAssessment, this));
         Routes::Options(router, "/topic/:mod_type",
                         Routes::bind(&DDSEndpoint::executeOptions, this));
 
@@ -782,7 +906,8 @@ private:
     }
 
     void getInstance(const Rest::Request &request,
-                     Http::ResponseWriter response) {
+                     Http::ResponseWriter response)
+    {
         StringBuffer s;
         Writer<StringBuffer> writer(s);
 
@@ -802,20 +927,23 @@ private:
         response.send(Http::Code::Ok, s.GetString(), MIME(Application, Json));
     }
 
-    void getStates(const Rest::Request &request, Http::ResponseWriter response) {
+    void getStates(const Rest::Request &request, Http::ResponseWriter response)
+    {
 
         StringBuffer s;
         Writer<StringBuffer> writer(s);
 
         writer.StartArray();
-        if (exists(state_path) && is_directory(state_path)) {
+        if (exists(state_path) && is_directory(state_path))
+        {
             path p(state_path);
-            if (is_directory(p)) {
+            if (is_directory(p))
+            {
                 std::vector<boost::filesystem::path> paths(
-                        boost::filesystem::directory_iterator{state_path}, boost::filesystem::directory_iterator{}
-                );
+                    boost::filesystem::directory_iterator{state_path}, boost::filesystem::directory_iterator{});
                 std::sort(paths.begin(), paths.end());
-                for (auto const &path : paths) {
+                for (auto const &path : paths)
+                {
                     writer.StartObject();
                     writer.Key("name");
                     writer.String(path.filename().c_str());
@@ -834,23 +962,30 @@ private:
     }
 
     void deleteState(const Rest::Request &request,
-                     Http::ResponseWriter response) {
+                     Http::ResponseWriter response)
+    {
         auto name = request.param(":name").as<std::string>();
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
-        if (name != "StandardMale@0s.xml") {
+        if (name != "StandardMale@0s.xml")
+        {
             std::ostringstream deleteFile;
             deleteFile << state_path << "/" << name;
             path deletePath(deleteFile.str().c_str());
-            if (exists(deletePath) && is_regular_file(deletePath)) {
+            if (exists(deletePath) && is_regular_file(deletePath))
+            {
                 LOG_INFO << "Deleting " << deletePath;
                 boost::filesystem::remove(deletePath);
                 response.send(Pistache::Http::Code::Ok, "Deleted",
                               MIME(Application, Json));
-            } else {
+            }
+            else
+            {
                 response.send(Pistache::Http::Code::Forbidden,
                               "Unable to delete state file", MIME(Application, Json));
             }
-        } else {
+        }
+        else
+        {
             response.send(Pistache::Http::Code::Forbidden,
                           "Can not delete default state file",
                           MIME(Application, Json));
@@ -858,23 +993,34 @@ private:
     }
 
     void getScenarios(const Rest::Request &request,
-                      Http::ResponseWriter response) {
+                      Http::ResponseWriter response)
+    {
         StringBuffer s;
         Writer<StringBuffer> writer(s);
 
         writer.StartArray();
-        if (exists(scenario_path) && is_directory(scenario_path)) {
+        if (exists(scenario_path) && is_directory(scenario_path))
+        {
             path p(scenario_path);
-            if (is_directory(p)) {
-                directory_iterator end_iter;
-                for (directory_iterator dir_itr(p); dir_itr != end_iter; ++dir_itr) {
-                    if (is_regular_file(dir_itr->status())) {
+            if (is_directory(p))
+            {
+                // Create a vector to hold all paths for sorting
+                std::vector<boost::filesystem::path> paths(
+                    boost::filesystem::directory_iterator{scenario_path}, boost::filesystem::directory_iterator{});
+                // Sort the paths alphabetically
+                std::sort(paths.begin(), paths.end());
+
+                // Now iterate through the sorted paths
+                for (auto const &path : paths)
+                {
+                    if (is_regular_file(path))
+                    {
                         writer.StartObject();
                         writer.Key("name");
-                        writer.String(dir_itr->path().filename().c_str());
+                        writer.String(path.filename().c_str());
                         writer.Key("last_updated");
                         stringstream writeTime;
-                        writeTime << last_write_time(dir_itr->path());
+                        writeTime << last_write_time(path);
                         writer.String(writeTime.str().c_str());
                         writer.EndObject();
                     }
@@ -889,17 +1035,22 @@ private:
     }
 
     void getPatients(const Rest::Request &request,
-                     Http::ResponseWriter response) {
+                     Http::ResponseWriter response)
+    {
         StringBuffer s;
         Writer<StringBuffer> writer(s);
 
         writer.StartArray();
-        if (exists(patient_path) && is_directory(patient_path)) {
+        if (exists(patient_path) && is_directory(patient_path))
+        {
             path p(patient_path);
-            if (is_directory(p)) {
+            if (is_directory(p))
+            {
                 directory_iterator end_iter;
-                for (directory_iterator dir_itr(p); dir_itr != end_iter; ++dir_itr) {
-                    if (is_regular_file(dir_itr->status())) {
+                for (directory_iterator dir_itr(p); dir_itr != end_iter; ++dir_itr)
+                {
+                    if (is_regular_file(dir_itr->status()))
+                    {
                         writer.StartObject();
                         writer.Key("name");
                         writer.String(dir_itr->path().filename().c_str());
@@ -919,12 +1070,13 @@ private:
                       MIME(Application, Json));
     }
 
-    void getAssessments(const Rest::Request &request, Http::ResponseWriter response) {
+    void getAssessments(const Rest::Request &request, Http::ResponseWriter response)
+    {
         LOG_INFO << "Get a list of all assessment CSVs";
-
     }
 
-    int writeToFile(const string & filename, const string & data) {
+    int writeToFile(const string &filename, const string &data)
+    {
         std::fstream out;
 
         out.open(filename, std::fstream::in | std::fstream::out | std::fstream::trunc);
@@ -938,7 +1090,8 @@ private:
             out.open(filename);
         }
 
-        if (out.fail()) {
+        if (out.fail())
+        {
             LOG_ERROR << "Open failure: " << strerror(errno);
             return -1;
         }
@@ -951,9 +1104,11 @@ private:
     }
 
     void createAssessment(const Rest::Request &request,
-                          Http::ResponseWriter response) {
+                          Http::ResponseWriter response)
+    {
         auto name = request.param(":name").as<std::string>();
-        if (name.empty()) {
+        if (name.empty())
+        {
             LOG_INFO << "Name was empty";
             name = "test.csv";
         }
@@ -963,7 +1118,7 @@ private:
         auto s = std::chrono::steady_clock::now();
         writeToFile(filename, request.body());
         auto dt = std::chrono::steady_clock::now() - s;
-        LOG_INFO << "File upload processed in: " << std::chrono::duration_cast<std::chrono::microseconds>(dt).count()<< endl;
+        LOG_INFO << "File upload processed in: " << std::chrono::duration_cast<std::chrono::microseconds>(dt).count() << endl;
         response.send(Http::Code::Ok);
 
         LOG_INFO << "Sending out system message that there's an assessment available.";
@@ -974,30 +1129,35 @@ private:
     }
 
     void deleteAssessment(const Rest::Request &request,
-                          Http::ResponseWriter response) {
+                          Http::ResponseWriter response)
+    {
         auto name = request.param(":name").as<std::string>();
     }
 
-    void getAssessment(const Rest::Request &request, Http::ResponseWriter response) {
+    void getAssessment(const Rest::Request &request, Http::ResponseWriter response)
+    {
         std::string name = request.param(":name").as<std::string>();
         std::string fileName = "assessments/" + name;
         LOG_INFO << "Recieved a request to GET an assessment file, so we're serving this up: " << fileName;
         Http::serveFile(response, fileName.c_str());
     }
 
-
-
-    void getActions(const Rest::Request &request, Http::ResponseWriter response) {
+    void getActions(const Rest::Request &request, Http::ResponseWriter response)
+    {
         StringBuffer s;
         Writer<StringBuffer> writer(s);
 
         writer.StartArray();
-        if (exists(action_path) && is_directory(action_path)) {
+        if (exists(action_path) && is_directory(action_path))
+        {
             path p(action_path);
-            if (is_directory(p)) {
+            if (is_directory(p))
+            {
                 directory_iterator end_iter;
-                for (directory_iterator dir_itr(p); dir_itr != end_iter; ++dir_itr) {
-                    if (is_regular_file(dir_itr->status())) {
+                for (directory_iterator dir_itr(p); dir_itr != end_iter; ++dir_itr)
+                {
+                    if (is_regular_file(dir_itr->status()))
+                    {
                         writer.StartObject();
                         writer.Key("name");
                         writer.String(dir_itr->path().filename().c_str());
@@ -1018,7 +1178,8 @@ private:
     }
 
     void executeCommand(const Rest::Request &request,
-                        Http::ResponseWriter response) {
+                        Http::ResponseWriter response)
+    {
         Document document;
         document.Parse(request.body().c_str());
         std::string payload = document["payload"].GetString();
@@ -1032,20 +1193,25 @@ private:
     }
 
     void executePhysiologyModification(const Rest::Request &request,
-                                       Http::ResponseWriter response) {
+                                       Http::ResponseWriter response)
+    {
         std::string type, location, practitioner, payload;
         Document document;
         document.Parse(request.body().c_str());
-        if (document.HasMember("type")) {
+        if (document.HasMember("type"))
+        {
             type = document["type"].GetString();
         }
-        if (document.HasMember("location")) {
+        if (document.HasMember("location"))
+        {
             location = document["location"].GetString();
         }
-        if (document.HasMember("practitioner")) {
+        if (document.HasMember("practitioner"))
+        {
             practitioner = document["practitioner"].GetString();
         }
-        if (document.HasMember("payload")) {
+        if (document.HasMember("payload"))
+        {
             payload = document["payload"].GetString();
         }
         AMM::UUID erID = SendEventRecord(location, practitioner, type);
@@ -1057,20 +1223,25 @@ private:
     }
 
     void executeRenderModification(const Rest::Request &request,
-                                   Http::ResponseWriter response) {
+                                   Http::ResponseWriter response)
+    {
         std::string type, location, practitioner, payload;
         Document document;
         document.Parse(request.body().c_str());
-        if (document.HasMember("type")) {
+        if (document.HasMember("type"))
+        {
             type = document["type"].GetString();
         }
-        if (document.HasMember("location")) {
+        if (document.HasMember("location"))
+        {
             location = document["location"].GetString();
         }
-        if (document.HasMember("practitioner")) {
+        if (document.HasMember("practitioner"))
+        {
             practitioner = document["practitioner"].GetString();
         }
-        if (document.HasMember("payload")) {
+        if (document.HasMember("payload"))
+        {
             payload = document["payload"].GetString();
         }
         AMM::UUID erID = SendEventRecord(location, practitioner, type);
@@ -1082,26 +1253,33 @@ private:
     }
 
     void executePerformanceAssessment(const Rest::Request &request,
-                                      Http::ResponseWriter response) {
+                                      Http::ResponseWriter response)
+    {
         std::string type, location, practitioner, payload, info, step, comment;
         Document document;
         document.Parse(request.body().c_str());
-        if (document.HasMember("type")) {
+        if (document.HasMember("type"))
+        {
             type = document["type"].GetString();
         }
-        if (document.HasMember("location")) {
+        if (document.HasMember("location"))
+        {
             location = document["location"].GetString();
         }
-        if (document.HasMember("practitioner")) {
+        if (document.HasMember("practitioner"))
+        {
             practitioner = document["practitioner"].GetString();
         }
-        if (document.HasMember("info")) {
+        if (document.HasMember("info"))
+        {
             info = document["info"].GetString();
         }
-        if (document.HasMember("step")) {
+        if (document.HasMember("step"))
+        {
             step = document["step"].GetString();
         }
-        if (document.HasMember("comment")) {
+        if (document.HasMember("comment"))
+        {
             comment = document["comment"].GetString();
         }
         AMM::UUID erID = SendEventRecord(location, practitioner, type);
@@ -1113,7 +1291,8 @@ private:
     }
 
     void executeOptions(const Rest::Request &request,
-                        Http::ResponseWriter response) {
+                        Http::ResponseWriter response)
+    {
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
         response.send(Pistache::Http::Code::Ok, "{\"message\":\"success\"}");
@@ -1123,21 +1302,25 @@ private:
                       Http::ResponseWriter response) {}
 
     void deleteAction(const Rest::Request &request,
-                      Http::ResponseWriter response) {
+                      Http::ResponseWriter response)
+    {
         auto name = request.param(":name").as<std::string>();
     }
 
     void updateAction(const Rest::Request &request,
-                      Http::ResponseWriter response) {
+                      Http::ResponseWriter response)
+    {
         auto name = request.param(":name").as<std::string>();
     }
 
-    void getAction(const Rest::Request &request, Http::ResponseWriter response) {
+    void getAction(const Rest::Request &request, Http::ResponseWriter response)
+    {
         auto name = request.param(":name").as<std::string>();
     }
 
     void issueCommand(const Rest::Request &request,
-                      Http::ResponseWriter response) {
+                      Http::ResponseWriter response)
+    {
         auto name = request.param(":name").as<std::string>();
         SendCommand(name);
         StringBuffer s;
@@ -1151,7 +1334,8 @@ private:
     }
 
     void getModuleById(const Rest::Request &request,
-                       Http::ResponseWriter response) {
+                       Http::ResponseWriter response)
+    {
         auto id = request.param(":id").as<std::string>();
         StringBuffer s;
         Writer<StringBuffer> writer(s);
@@ -1166,37 +1350,39 @@ private:
               " module_capabilities "
               " WHERE module_id = ?"
            << id >>
-           [&](string module_id, string module_guid, string module_name, string description,
-               string capabilities, string manufacturer, string model) {
-               writer.StartObject();
+            [&](string module_id, string module_guid, string module_name, string description,
+                string capabilities, string manufacturer, string model)
+        {
+            writer.StartObject();
 
-               writer.Key("Module_ID");
-               writer.String(module_id.c_str());
+            writer.Key("Module_ID");
+            writer.String(module_id.c_str());
 
-               writer.Key("Module_Name");
-               writer.String(module_name.c_str());
+            writer.Key("Module_Name");
+            writer.String(module_name.c_str());
 
-               writer.Key("Description");
-               writer.String(description.c_str());
+            writer.Key("Description");
+            writer.String(description.c_str());
 
-               writer.Key("Manufacturer");
-               writer.String(manufacturer.c_str());
+            writer.Key("Manufacturer");
+            writer.String(manufacturer.c_str());
 
-               writer.Key("Model");
-               writer.String(model.c_str());
+            writer.Key("Model");
+            writer.String(model.c_str());
 
-               writer.Key("Module_Capabilities");
-               writer.String(capabilities.c_str());
+            writer.Key("Module_Capabilities");
+            writer.String(capabilities.c_str());
 
-               writer.EndObject();
-           };
+            writer.EndObject();
+        };
 
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         response.send(Http::Code::Ok, s.GetString(), MIME(Application, Json));
     }
 
     void getModuleByGuid(const Rest::Request &request,
-                         Http::ResponseWriter response) {
+                         Http::ResponseWriter response)
+    {
         auto guid = request.param(":guid").as<std::string>();
         StringBuffer s;
         Writer<StringBuffer> writer(s);
@@ -1211,37 +1397,39 @@ private:
               " module_capabilities "
               " WHERE module_guid = ?"
            << guid >>
-           [&](string module_id, string module_guid, string module_name,
-               string capabilities, string manufacturer, string model) {
-               writer.StartObject();
+            [&](string module_id, string module_guid, string module_name,
+                string capabilities, string manufacturer, string model)
+        {
+            writer.StartObject();
 
-               writer.Key("Module_ID");
-               writer.String(module_id.c_str());
+            writer.Key("Module_ID");
+            writer.String(module_id.c_str());
 
-               writer.Key("Module_GUID");
-               writer.String(module_guid.c_str());
+            writer.Key("Module_GUID");
+            writer.String(module_guid.c_str());
 
-               writer.Key("Module_Name");
-               writer.String(module_name.c_str());
+            writer.Key("Module_Name");
+            writer.String(module_name.c_str());
 
-               writer.Key("Manufacturer");
-               writer.String(manufacturer.c_str());
+            writer.Key("Manufacturer");
+            writer.String(manufacturer.c_str());
 
-               writer.Key("Model");
-               writer.String(model.c_str());
+            writer.Key("Model");
+            writer.String(model.c_str());
 
-               writer.Key("Module_Capabilities");
-               writer.String(capabilities.c_str());
+            writer.Key("Module_Capabilities");
+            writer.String(capabilities.c_str());
 
-               writer.EndObject();
-           };
+            writer.EndObject();
+        };
 
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         response.send(Http::Code::Ok, s.GetString(), MIME(Application, Json));
     }
 
     void getModuleCount(const Rest::Request &request,
-                        Http::ResponseWriter response) {
+                        Http::ResponseWriter response)
+    {
         StringBuffer s;
         Writer<StringBuffer> writer(s);
 
@@ -1249,7 +1437,7 @@ private:
         int coreCount = 0;
         int otherCount = 0;
         db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities" >> totalCount;
-        //db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities where module_name LIKE 'AMM_%'" >> coreCount;
+        // db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities where module_name LIKE 'AMM_%'" >> coreCount;
 
         otherCount = totalCount - coreCount;
 
@@ -1266,20 +1454,22 @@ private:
         response.send(Http::Code::Ok, s.GetString(), MIME(Application, Json));
     }
 
-    void getOtherModules(const Rest::Request &request, Http::ResponseWriter response) {
+    void getOtherModules(const Rest::Request &request, Http::ResponseWriter response)
+    {
         StringBuffer s;
         Writer<StringBuffer> writer(s);
         writer.StartArray();
-        db << "SELECT DISTINCT module_name FROM module_capabilities where module_name NOT LIKE 'AMM_%'"
-           >> [&](string module_name) {
-               writer.String(module_name.c_str());
-           };
+        db << "SELECT DISTINCT module_name FROM module_capabilities where module_name NOT LIKE 'AMM_%'" >> [&](string module_name)
+        {
+            writer.String(module_name.c_str());
+        };
         writer.EndArray();
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         response.send(Http::Code::Ok, s.GetString(), MIME(Application, Json));
     }
 
-    void getModules(const Rest::Request &request, Http::ResponseWriter response) {
+    void getModules(const Rest::Request &request, Http::ResponseWriter response)
+    {
         StringBuffer s;
         Writer<StringBuffer> writer(s);
         writer.StartArray();
@@ -1292,31 +1482,32 @@ private:
               "module_capabilities.model as model "
               " FROM "
               " module_capabilities; " >>
-           [&](string module_id, string module_name, string description,
-               string capabilities,
-               string manufacturer, string model) {
-               writer.StartObject();
+            [&](string module_id, string module_name, string description,
+                string capabilities,
+                string manufacturer, string model)
+        {
+            writer.StartObject();
 
-               writer.Key("Module_ID");
-               writer.String(module_id.c_str());
+            writer.Key("Module_ID");
+            writer.String(module_id.c_str());
 
-               writer.Key("Module_Name");
-               writer.String(module_name.c_str());
+            writer.Key("Module_Name");
+            writer.String(module_name.c_str());
 
-               writer.Key("Description");
-               writer.String(description.c_str());
+            writer.Key("Description");
+            writer.String(description.c_str());
 
-               writer.Key("Manufacturer");
-               writer.String(manufacturer.c_str());
+            writer.Key("Manufacturer");
+            writer.String(manufacturer.c_str());
 
-               writer.Key("Model");
-               writer.String(model.c_str());
+            writer.Key("Model");
+            writer.String(model.c_str());
 
-               writer.Key("Module_Capabilities");
-               writer.String(capabilities.c_str());
+            writer.Key("Module_Capabilities");
+            writer.String(capabilities.c_str());
 
-               writer.EndObject();
-           };
+            writer.EndObject();
+        };
 
         writer.EndArray();
 
@@ -1325,7 +1516,8 @@ private:
     }
 
     void getEventLog(const Rest::Request &request,
-                     Http::ResponseWriter response) {
+                     Http::ResponseWriter response)
+    {
         StringBuffer s;
         Writer<StringBuffer> writer(s);
         writer.StartArray();
@@ -1341,22 +1533,23 @@ private:
               "LEFT JOIN module_capabilities "
               "ON "
               "events.source = module_capabilities.module_guid" >>
-           [&](string module_id, string module_name, string source, string topic, int64_t timestamp, string data) {
-               writer.StartObject();
-               writer.Key("module_id");
-               writer.String(module_id.c_str());
-               writer.Key("source");
-               writer.String(module_name.c_str());
-               writer.Key("module_guid");
-               writer.String(source.c_str());
-               writer.Key("timestamp");
-               writer.Uint64(timestamp);
-               writer.Key("topic");
-               writer.String(topic.c_str());
-               writer.Key("message");
-               writer.String(data.c_str());
-               writer.EndObject();
-           };
+            [&](string module_id, string module_name, string source, string topic, int64_t timestamp, string data)
+        {
+            writer.StartObject();
+            writer.Key("module_id");
+            writer.String(module_id.c_str());
+            writer.Key("source");
+            writer.String(module_name.c_str());
+            writer.Key("module_guid");
+            writer.String(source.c_str());
+            writer.Key("timestamp");
+            writer.Uint64(timestamp);
+            writer.Key("topic");
+            writer.String(topic.c_str());
+            writer.Key("message");
+            writer.String(data.c_str());
+            writer.EndObject();
+        };
 
         writer.EndArray();
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
@@ -1364,7 +1557,8 @@ private:
     }
 
     void getEventLogCSV(const Rest::Request &request,
-                        Http::ResponseWriter response) {
+                        Http::ResponseWriter response)
+    {
         std::ostringstream s;
         db << "SELECT "
               "module_capabilities.module_name,"
@@ -1378,14 +1572,14 @@ private:
               "LEFT JOIN module_capabilities "
               "ON "
               "events.source = module_capabilities.module_guid" >>
-           [&](string module_name, string source, string topic, int64_t tick, int64_t timestamp,
-               string data) {
-               std::time_t temp = timestamp;
-               std::tm *t = std::gmtime(&temp);
-               s << std::put_time(t, "%Y-%m-%d %I:%M:%S %p") << "," << module_name << "," << source << "," << topic
-                 << "," << data << std::endl;
-           };
-
+            [&](string module_name, string source, string topic, int64_t tick, int64_t timestamp,
+                string data)
+        {
+            std::time_t temp = timestamp;
+            std::tm *t = std::gmtime(&temp);
+            s << std::put_time(t, "%Y-%m-%d %I:%M:%S %p") << "," << module_name << "," << source << "," << topic
+              << "," << data << std::endl;
+        };
 
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         auto csvHeader = Http::Header::Raw("Content-Disposition", "attachment;filename=amm_timeline_log.csv");
@@ -1394,7 +1588,8 @@ private:
     }
 
     void getDiagnosticLog(const Rest::Request &request,
-                          Http::ResponseWriter response) {
+                          Http::ResponseWriter response)
+    {
         StringBuffer s;
         Writer<StringBuffer> writer(s);
         writer.StartArray();
@@ -1407,24 +1602,24 @@ private:
               "logs.timestamp "
               "FROM "
               "logs " >>
-           [&](string module_name, string module_guid, string module_id, string message, string log_level,
-               int64_t timestamp) {
-
-               writer.StartObject();
-               writer.Key("source");
-               writer.String(module_name.c_str());
-               writer.Key("module_guid");
-               writer.String(module_guid.c_str());
-               writer.Key("module_id");
-               writer.String(module_id.c_str());
-               writer.Key("timestamp");
-               writer.Uint64(timestamp);
-               writer.Key("log_level");
-               writer.String(log_level.c_str());
-               writer.Key("message");
-               writer.String(message.c_str());
-               writer.EndObject();
-           };
+            [&](string module_name, string module_guid, string module_id, string message, string log_level,
+                int64_t timestamp)
+        {
+            writer.StartObject();
+            writer.Key("source");
+            writer.String(module_name.c_str());
+            writer.Key("module_guid");
+            writer.String(module_guid.c_str());
+            writer.Key("module_id");
+            writer.String(module_id.c_str());
+            writer.Key("timestamp");
+            writer.Uint64(timestamp);
+            writer.Key("log_level");
+            writer.String(log_level.c_str());
+            writer.Key("message");
+            writer.String(message.c_str());
+            writer.EndObject();
+        };
 
         writer.EndArray();
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
@@ -1432,7 +1627,8 @@ private:
     }
 
     void getDiagnosticLogCSV(const Rest::Request &request,
-                             Http::ResponseWriter response) {
+                             Http::ResponseWriter response)
+    {
         std::ostringstream s;
         db << "SELECT "
               "logs.module_name, "
@@ -1443,13 +1639,14 @@ private:
               "logs.timestamp "
               "FROM "
               "logs " >>
-           [&](string module_name, string module_guid, string module_id, string message, string log_level,
-               int64_t timestamp) {
-               std::time_t temp = timestamp;
-               std::tm *t = std::gmtime(&temp);
-               s << std::put_time(t, "%Y-%m-%d %I:%M:%S %p") << "," << log_level << "," << module_name << "," << message
-                 << std::endl;
-           };
+            [&](string module_name, string module_guid, string module_id, string message, string log_level,
+                int64_t timestamp)
+        {
+            std::time_t temp = timestamp;
+            std::tm *t = std::gmtime(&temp);
+            s << std::put_time(t, "%Y-%m-%d %I:%M:%S %p") << "," << log_level << "," << module_name << "," << message
+              << std::endl;
+        };
 
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         auto csvHeader = Http::Header::Raw("Content-Disposition", "attachment;filename=amm_diagnostic_log.csv");
@@ -1457,13 +1654,15 @@ private:
         response.send(Http::Code::Ok, s.str(), Http::Mime::MediaType::fromString("text/csv"));
     }
 
-    void getNodes(const Rest::Request &request, Http::ResponseWriter response) {
+    void getNodes(const Rest::Request &request, Http::ResponseWriter response)
+    {
         StringBuffer s;
         Writer<StringBuffer> writer(s);
         writer.StartArray();
 
         auto nit = nodeDataStorage.begin();
-        while (nit != nodeDataStorage.end()) {
+        while (nit != nodeDataStorage.end())
+        {
             writer.StartObject();
             writer.Key(nit->first.c_str());
             writer.Double(nit->second);
@@ -1472,7 +1671,8 @@ private:
         }
 
         auto sit = statusStorage.begin();
-        while (sit != statusStorage.end()) {
+        while (sit != statusStorage.end())
+        {
             writer.StartObject();
             writer.Key(sit->first.c_str());
             writer.String(sit->second.c_str());
@@ -1485,18 +1685,21 @@ private:
         response.send(Http::Code::Ok, s.GetString(), MIME(Application, Json));
     }
 
-    void getLabsReport(const Rest::Request &request, Http::ResponseWriter response) {
+    void getLabsReport(const Rest::Request &request, Http::ResponseWriter response)
+    {
         std::string labReport = boost::algorithm::join(labsStorage, "\n");
         auto mime = Http::Mime::MediaType::fromString("text/csv");
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         response.send(Http::Code::Ok, labReport, mime);
     }
 
-    void getNode(const Rest::Request &request, Http::ResponseWriter response) {
+    void getNode(const Rest::Request &request, Http::ResponseWriter response)
+    {
 
         auto name = request.param(":name").as<std::string>();
         auto it = nodeDataStorage.find(name);
-        if (it != nodeDataStorage.end()) {
+        if (it != nodeDataStorage.end())
+        {
             StringBuffer s;
             Writer<StringBuffer> writer(s);
             writer.StartObject();
@@ -1505,18 +1708,22 @@ private:
             writer.EndObject();
             response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
             response.send(Http::Code::Ok, s.GetString(), MIME(Application, Json));
-        } else {
+        }
+        else
+        {
             response.send(Http::Code::Not_Found, "Node data does not exist");
         }
     }
 
-    void doDebug(const Rest::Request &request, Http::ResponseWriter response) {
+    void doDebug(const Rest::Request &request, Http::ResponseWriter response)
+    {
         printCookies(request);
         response.cookies().add(Http::Cookie("lang", "en-US"));
         response.send(Http::Code::Ok);
     }
 
-    void doShutdown(const Rest::Request &request, Http::ResponseWriter response) {
+    void doShutdown(const Rest::Request &request, Http::ResponseWriter response)
+    {
         m_runThread = false;
         response.cookies().add(Http::Cookie("lang", "en-US"));
         response.send(Http::Code::Ok);
@@ -1530,8 +1737,8 @@ private:
     Rest::Router router;
 };
 
-
-static void show_usage(const std::string &name) {
+static void show_usage(const std::string &name)
+{
     cerr << "Usage: " << name << " <option(s)>"
          << "\nOptions:\n"
          << "\t-h,--help\t\tShow this help message\n"
@@ -1542,22 +1749,27 @@ Port port(static_cast<uint16_t>(portNumber));
 Address addr(Ipv4::any(), port);
 DDSEndpoint server(addr);
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     static plog::ColorConsoleAppender<plog::TxtFormatter> consoleAppender;
     plog::init(plog::verbose, &consoleAppender);
 
-    for (int i = 1; i < argc; ++i) {
+    for (int i = 1; i < argc; ++i)
+    {
         std::string arg = argv[i];
-        if ((arg == "-h") || (arg == "--help")) {
+        if ((arg == "-h") || (arg == "--help"))
+        {
             show_usage(argv[0]);
             return 0;
         }
 
-        if (arg == "-d") {
+        if (arg == "-d")
+        {
             daemonize = 1;
         }
 
-        if (arg == "-nodiscovery") {
+        if (arg == "-nodiscovery")
+        {
             discovery = 0;
         }
     }
@@ -1617,10 +1829,12 @@ int main(int argc, char *argv[]) {
 
     LOG_INFO << "Ready.";
 
-    while (m_runThread) {
+    while (m_runThread)
+    {
         getline(cin, action);
         transform(action.begin(), action.end(), action.begin(), ::toupper);
-        if (action == "EXIT") {
+        if (action == "EXIT")
+        {
             m_runThread = false;
             LOG_INFO << "Shutting down from command-line.";
         }
