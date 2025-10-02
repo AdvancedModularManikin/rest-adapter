@@ -506,6 +506,7 @@ public:
 
     void onNewPhysiologyValue(AMM::PhysiologyValue &n, SampleInfo_t *info)
     {
+      //      LOG_TRACE << "Getting physiology value: " << n.name() << " = " << n.value();
         const std::lock_guard<std::mutex> lock(nds_mutex);
         if (!isnan(n.value()))
         {
