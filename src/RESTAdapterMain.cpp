@@ -55,6 +55,10 @@ std::string patient_path = "./patients/";
 std::string scenario_path = "./static/scenarios/";
 
 std::mutex nds_mutex;
+std::mutex status_mutex;
+std::mutex labs_mutex;
+std::mutex db_mutex;
+
 std::map<std::string, double> nodeDataStorage;
 
 std::map<std::string, std::string> statusStorage = {
@@ -94,6 +98,7 @@ void SendReset();
 /// Resets database tables for labs.
 void ResetLabs()
 {
+    const std::lock_guard<std::mutex> lock(labs_mutex);
     labsStorage.clear();
     std::ostringstream labRow;
 
@@ -184,86 +189,97 @@ void AppendLabRow()
 {
     std::ostringstream labRow;
 
-    labRow << nodeDataStorage["SIM_TIME"] << ",";
+    // Take a snapshot of all needed values while holding the lock
+    std::map<std::string, double> nodeSnapshot;
+    {
+        const std::lock_guard<std::mutex> lock(nds_mutex);
+        nodeSnapshot = nodeDataStorage;
+    }
+
+    labRow << nodeSnapshot["SIM_TIME"] << ",";
 
     // POCT
     labRow << "POCT,";
-    labRow << nodeDataStorage["Substance_Sodium"] << ",";
-    labRow << nodeDataStorage["MetabolicPanel_Potassium"] << ",";
-    labRow << nodeDataStorage["MetabolicPanel_Chloride"] << ",";
-    labRow << nodeDataStorage["MetabolicPanel_CarbonDioxide"] << ",";
+    labRow << nodeSnapshot["Substance_Sodium"] << ",";
+    labRow << nodeSnapshot["MetabolicPanel_Potassium"] << ",";
+    labRow << nodeSnapshot["MetabolicPanel_Chloride"] << ",";
+    labRow << nodeSnapshot["MetabolicPanel_CarbonDioxide"] << ",";
     labRow << ","; // Anion Gap
     labRow << ","; // Ionized Calcium (iCa)
-    labRow << nodeDataStorage["Substance_Glucose_Concentration"] << ",";
-    labRow << nodeDataStorage["BloodChemistry_BloodUreaNitrogen_Concentration"] << ",";
-    labRow << nodeDataStorage["Substance_Creatinine_Concentration"] << ",";
+    labRow << nodeSnapshot["Substance_Glucose_Concentration"] << ",";
+    labRow << nodeSnapshot["BloodChemistry_BloodUreaNitrogen_Concentration"] << ",";
+    labRow << nodeSnapshot["Substance_Creatinine_Concentration"] << ",";
 
     // Hematology
     labRow << "Hematology,";
-    labRow << nodeDataStorage["BloodChemistry_Hemaocrit"] << ",";
-    labRow << nodeDataStorage["Substance_Hemoglobin_Concentration"] << ",";
+    labRow << nodeSnapshot["BloodChemistry_Hemaocrit"] << ",";
+    labRow << nodeSnapshot["Substance_Hemoglobin_Concentration"] << ",";
 
     // ABG
     labRow << "ABG,";
-    labRow << nodeDataStorage["Substance_Lactate_Concentration_mmol"] << ",";
-    labRow << nodeDataStorage["BloodChemistry_BloodPH"] << ",";
-    labRow << nodeDataStorage["BloodChemistry_BloodPH_MOD"] << ",";
-    labRow << nodeDataStorage["BloodChemistry_Arterial_CarbonDioxide_Pressure"] << ",";
-    labRow << nodeDataStorage["BloodChemistry_Arterial_Oxygen_Pressure"] << ",";
-    labRow << nodeDataStorage["MetabolicPanel_CarbonDioxide"] << ",";
-    labRow << nodeDataStorage["Substance_Bicarbonate"] << ",";
-    labRow << nodeDataStorage["Substance_BaseExcess"] << ",";
-    labRow << nodeDataStorage["BloodChemistry_Oxygen_Saturation"] << ",";
-    labRow << nodeDataStorage["Substance_Carboxyhemoglobin_Concentration"] << ",";
+    labRow << nodeSnapshot["Substance_Lactate_Concentration_mmol"] << ",";
+    labRow << nodeSnapshot["BloodChemistry_BloodPH"] << ",";
+    labRow << nodeSnapshot["BloodChemistry_BloodPH_MOD"] << ",";
+    labRow << nodeSnapshot["BloodChemistry_Arterial_CarbonDioxide_Pressure"] << ",";
+    labRow << nodeSnapshot["BloodChemistry_Arterial_Oxygen_Pressure"] << ",";
+    labRow << nodeSnapshot["MetabolicPanel_CarbonDioxide"] << ",";
+    labRow << nodeSnapshot["Substance_Bicarbonate"] << ",";
+    labRow << nodeSnapshot["Substance_BaseExcess"] << ",";
+    labRow << nodeSnapshot["BloodChemistry_Oxygen_Saturation"] << ",";
+    labRow << nodeSnapshot["Substance_Carboxyhemoglobin_Concentration"] << ",";
 
     // VBG
     labRow << "VBG,";
-    labRow << nodeDataStorage["Substance_Lactate_Concentration_mmol"] << ",";
-    labRow << nodeDataStorage["BloodChemistry_BloodPH"] << ",";
-    labRow << nodeDataStorage["BloodChemistry_VenousCarbonDioxidePressure"] << ",";
-    labRow << nodeDataStorage["MetabolicPanel_CarbonDioxide"] << ",";
-    labRow << nodeDataStorage["Substance_Bicarbonate"] << ",";
-    labRow << nodeDataStorage["Substance_BaseExcess"] << ",";
-    labRow << nodeDataStorage["Substance_Carboxyhemoglobin_Concentration"] << ",";
+    labRow << nodeSnapshot["Substance_Lactate_Concentration_mmol"] << ",";
+    labRow << nodeSnapshot["BloodChemistry_BloodPH"] << ",";
+    labRow << nodeSnapshot["BloodChemistry_VenousCarbonDioxidePressure"] << ",";
+    labRow << nodeSnapshot["MetabolicPanel_CarbonDioxide"] << ",";
+    labRow << nodeSnapshot["Substance_Bicarbonate"] << ",";
+    labRow << nodeSnapshot["Substance_BaseExcess"] << ",";
+    labRow << nodeSnapshot["Substance_Carboxyhemoglobin_Concentration"] << ",";
 
     // BMP
     labRow << "BMP,";
-    labRow << nodeDataStorage["Substance_Sodium"] << ",";
-    labRow << nodeDataStorage["MetabolicPanel_Potassium"] << ",";
-    labRow << nodeDataStorage["MetabolicPanel_Chloride"] << ",";
-    labRow << nodeDataStorage["MetabolicPanel_CarbonDioxide"] << ",";
+    labRow << nodeSnapshot["Substance_Sodium"] << ",";
+    labRow << nodeSnapshot["MetabolicPanel_Potassium"] << ",";
+    labRow << nodeSnapshot["MetabolicPanel_Chloride"] << ",";
+    labRow << nodeSnapshot["MetabolicPanel_CarbonDioxide"] << ",";
     labRow << ","; // Anion Gap
     labRow << ","; // Ionized Calcium (iCa)
-    labRow << nodeDataStorage["Substance_Glucose_Concentration"] << ",";
-    labRow << nodeDataStorage["BloodChemistry_BloodUreaNitrogen_Concentration"] << ",";
-    labRow << nodeDataStorage["Substance_Creatinine_Concentration"] << ",";
+    labRow << nodeSnapshot["Substance_Glucose_Concentration"] << ",";
+    labRow << nodeSnapshot["BloodChemistry_BloodUreaNitrogen_Concentration"] << ",";
+    labRow << nodeSnapshot["Substance_Creatinine_Concentration"] << ",";
 
     // CBC
     labRow << "CBC,";
-    labRow << nodeDataStorage["BloodChemistry_WhiteBloodCell_Count"] << ",";
-    labRow << nodeDataStorage["BloodChemistry_RedBloodCell_Count"] << ",";
-    labRow << nodeDataStorage["Substance_Hemoglobin_Concentration"] << ",";
-    labRow << nodeDataStorage["BloodChemistry_Hemaocrit"] << ",";
-    labRow << nodeDataStorage["CompleteBloodCount_Platelet"] << ",";
+    labRow << nodeSnapshot["BloodChemistry_WhiteBloodCell_Count"] << ",";
+    labRow << nodeSnapshot["BloodChemistry_RedBloodCell_Count"] << ",";
+    labRow << nodeSnapshot["Substance_Hemoglobin_Concentration"] << ",";
+    labRow << nodeSnapshot["BloodChemistry_Hemaocrit"] << ",";
+    labRow << nodeSnapshot["CompleteBloodCount_Platelet"] << ",";
 
     // CMP
     labRow << "CMP,";
-    labRow << nodeDataStorage["Substance_Albumin_Concentration"] << ",";
+    labRow << nodeSnapshot["Substance_Albumin_Concentration"] << ",";
     labRow << ","; // ALP
     labRow << ","; // ALT
     labRow << ","; // AST
-    labRow << nodeDataStorage["BloodChemistry_BloodUreaNitrogen_Concentration"] << ",";
-    labRow << nodeDataStorage["Substance_Calcium_Concentration"] << ",";
-    labRow << nodeDataStorage["MetabolicPanel_Chloride"] << ",";
-    labRow << nodeDataStorage["MetabolicPanel_CarbonDioxide"] << ",";
-    labRow << nodeDataStorage["Substance_Creatinine_Concentration"] << ",";
-    labRow << nodeDataStorage["Substance_Creatinine_Concentration"] << ",";
-    labRow << nodeDataStorage["Substance_Glucose_Concentration"] << ",";
-    labRow << nodeDataStorage["MetabolicPanel_Potassium"] << ",";
-    labRow << nodeDataStorage["Substance_Sodium"] << ",";
-    labRow << nodeDataStorage["MetabolicPanel_Bilirubin"] << ",";
-    labRow << nodeDataStorage["MetabolicPanel_Protein"];
-    labsStorage.push_back(labRow.str());
+    labRow << nodeSnapshot["BloodChemistry_BloodUreaNitrogen_Concentration"] << ",";
+    labRow << nodeSnapshot["Substance_Calcium_Concentration"] << ",";
+    labRow << nodeSnapshot["MetabolicPanel_Chloride"] << ",";
+    labRow << nodeSnapshot["MetabolicPanel_CarbonDioxide"] << ",";
+    labRow << nodeSnapshot["Substance_Creatinine_Concentration"] << ",";
+    labRow << nodeSnapshot["Substance_Creatinine_Concentration"] << ",";
+    labRow << nodeSnapshot["Substance_Glucose_Concentration"] << ",";
+    labRow << nodeSnapshot["MetabolicPanel_Potassium"] << ",";
+    labRow << nodeSnapshot["Substance_Sodium"] << ",";
+    labRow << nodeSnapshot["MetabolicPanel_Bilirubin"] << ",";
+    labRow << nodeSnapshot["MetabolicPanel_Protein"];
+
+    {
+        const std::lock_guard<std::mutex> lock(labs_mutex);
+        labsStorage.push_back(labRow.str());
+    }
 }
 
 std::string ExtractTypeFromRenderMod(std::string payload)
@@ -316,27 +332,35 @@ public:
         {
             if (st.capability() == "fluidics")
             {
+                const std::lock_guard<std::mutex> lock(status_mutex);
                 statusStorage["FLUIDICS_STATE"] = statusValue.str();
             }
             else if (st.capability() == "clear_supply")
             {
+                const std::lock_guard<std::mutex> lock(status_mutex);
                 statusStorage["CLEAR_SUPPLY"] = statusValue.str();
             }
             else if (st.capability() == "blood_supply")
             {
+                const std::lock_guard<std::mutex> lock(status_mutex);
                 statusStorage["BLOOD_SUPPLY"] = statusValue.str();
             }
             else if (st.capability() == "air_supply")
             {
-                statusStorage["AIR_SUPPLY"] = statusValue.str();
+                {
+                    const std::lock_guard<std::mutex> lock(status_mutex);
+                    statusStorage["AIR_SUPPLY"] = statusValue.str();
+                }
                 // parse st.message() to double p; [p] = psi
                 try
                 {
                     double p = std::stod(st.message());
+                    const std::lock_guard<std::mutex> lock(nds_mutex);
                     nodeDataStorage["Air_Pressure"] = p;
                 }
                 catch (const std::invalid_argument &)
                 {
+                    const std::lock_guard<std::mutex> lock(nds_mutex);
                     nodeDataStorage["Air_Pressure"] = 0.0;
                 }
                 catch (const std::out_of_range &)
@@ -349,15 +373,20 @@ public:
         {
             if (st.capability() == "battery-1")
             {
-                statusStorage["BATTERY1"] = statusValue.str();
+                {
+                    const std::lock_guard<std::mutex> lock(status_mutex);
+                    statusStorage["BATTERY1"] = statusValue.str();
+                }
                 // parse st.message() to double soc; [soc] = %
                 try
                 {
                     double soc = std::stod(st.message());
+                    const std::lock_guard<std::mutex> lock(nds_mutex);
                     nodeDataStorage["Battery1_SOC"] = soc;
                 }
                 catch (const std::invalid_argument &)
                 {
+                    const std::lock_guard<std::mutex> lock(nds_mutex);
                     nodeDataStorage["Battery1_SOC"] = 0.0;
                 }
                 catch (const std::out_of_range &)
@@ -366,15 +395,20 @@ public:
             }
             else if (st.capability() == "battery-2")
             {
-                statusStorage["BATTERY2"] = statusValue.str();
+                {
+                    const std::lock_guard<std::mutex> lock(status_mutex);
+                    statusStorage["BATTERY2"] = statusValue.str();
+                }
                 // parse st.message() to double soc; [soc] = %
                 try
                 {
                     double soc = std::stod(st.message());
+                    const std::lock_guard<std::mutex> lock(nds_mutex);
                     nodeDataStorage["Battery2_SOC"] = soc;
                 }
                 catch (const std::invalid_argument &)
                 {
+                    const std::lock_guard<std::mutex> lock(nds_mutex);
                     nodeDataStorage["Battery2_SOC"] = 0.0;
                 }
                 catch (const std::out_of_range &)
@@ -383,18 +417,21 @@ public:
             }
             else if (st.capability() == "ext_power")
             {
+                const std::lock_guard<std::mutex> lock(status_mutex);
                 statusStorage["EXT_POWER"] = statusValue.str();
             }
         }
 
         if (st.capability() == "iv_detection")
         {
+            const std::lock_guard<std::mutex> lock(status_mutex);
             statusStorage["IVARM_STATE"] = statusValue.str();
         }
     }
 
     void onNewTick(AMM::Tick &t, SampleInfo_t *info)
     {
+        const std::lock_guard<std::mutex> lock(status_mutex);
         if (statusStorage["STATUS"].compare("NOT RUNNING") == 0 &&
             t.frame() > lastTick)
         {
@@ -411,6 +448,7 @@ public:
         {
         case AMM::ControlType::RUN:
         {
+            const std::lock_guard<std::mutex> lock(status_mutex);
             statusStorage["STATUS"] = "RUNNING";
             LOG_DEBUG << "SimControl received: Run sim.";
             break;
@@ -418,6 +456,7 @@ public:
 
         case AMM::ControlType::HALT:
         {
+            const std::lock_guard<std::mutex> lock(status_mutex);
             statusStorage["STATUS"] = "PAUSED";
             break;
         }
@@ -426,10 +465,16 @@ public:
         {
             LOG_DEBUG
                 << "SimControl received: Reset simulation, clean up and prepare for next run.";
-            statusStorage["STATUS"] = "NOT RUNNING";
-            statusStorage["TICK"] = "0";
-            statusStorage["TIME"] = "0";
-            nodeDataStorage.clear();
+            {
+                const std::lock_guard<std::mutex> lock(status_mutex);
+                statusStorage["STATUS"] = "NOT RUNNING";
+                statusStorage["TICK"] = "0";
+                statusStorage["TIME"] = "0";
+            }
+            {
+                const std::lock_guard<std::mutex> lock(nds_mutex);
+                nodeDataStorage.clear();
+            }
             ResetLabs();
             break;
         }
@@ -445,30 +490,45 @@ public:
             std::string value = c.message().substr(sysPrefix.size());
             if (value.find("START_SIM") != std::string::npos)
             {
+                const std::lock_guard<std::mutex> lock(status_mutex);
                 statusStorage["STATUS"] = "RUNNING";
             }
             else if (value.find("STOP_SIM") != std::string::npos)
             {
+                const std::lock_guard<std::mutex> lock(status_mutex);
                 statusStorage["STATUS"] = "STOPPED";
             }
             else if (value.find("PAUSE_SIM") != std::string::npos)
             {
+                const std::lock_guard<std::mutex> lock(status_mutex);
                 statusStorage["STATUS"] = "PAUSED";
             }
             else if (value.find("RESET_SIM") != std::string::npos)
             {
-                statusStorage["STATUS"] = "NOT RUNNING";
-                statusStorage["TICK"] = "0";
-                statusStorage["TIME"] = "0";
-                nodeDataStorage.clear();
+                {
+                    const std::lock_guard<std::mutex> lock(status_mutex);
+                    statusStorage["STATUS"] = "NOT RUNNING";
+                    statusStorage["TICK"] = "0";
+                    statusStorage["TIME"] = "0";
+                }
+                {
+                    const std::lock_guard<std::mutex> lock(nds_mutex);
+                    nodeDataStorage.clear();
+                }
                 ResetLabs();
             }
             else if (value.find("END_SIMULATION") != std::string::npos)
             {
-                statusStorage["STATUS"] = "STOPPED";
-                statusStorage["TICK"] = "0";
-                statusStorage["TIME"] = "0";
-                nodeDataStorage.clear();
+                {
+                    const std::lock_guard<std::mutex> lock(status_mutex);
+                    statusStorage["STATUS"] = "STOPPED";
+                    statusStorage["TICK"] = "0";
+                    statusStorage["TIME"] = "0";
+                }
+                {
+                    const std::lock_guard<std::mutex> lock(nds_mutex);
+                    nodeDataStorage.clear();
+                }
                 ResetLabs();
             }
             else if (value.find("APPEND_LABS") != std::string::npos)
@@ -484,17 +544,22 @@ public:
             }
             else if (!value.compare(0, loadPrefix.size(), loadPrefix))
             {
-                statusStorage["STATE"] = value.substr(loadPrefix.size());
+                {
+                    const std::lock_guard<std::mutex> lock(status_mutex);
+                    statusStorage["STATE"] = value.substr(loadPrefix.size());
+                }
                 SendReset();
             }
             else if (!value.compare(0, loadScenarioPrefix.size(),
                                     loadScenarioPrefix))
             {
+                const std::lock_guard<std::mutex> lock(status_mutex);
                 statusStorage["SCENARIO"] = value.substr(loadScenarioPrefix.size());
             }
             else if (!value.compare(0, loadPatientPrefix.size(),
                                     loadPatientPrefix))
             {
+                const std::lock_guard<std::mutex> lock(status_mutex);
                 statusStorage["PATIENT"] = value.substr(loadPatientPrefix.size());
             }
         }
@@ -522,6 +587,8 @@ public:
                    << "payload=" << rendMod.data();
         std::string stringOut = messageOut.str();
         // LOG_DEBUG << "Render modification received from AMM: " << stringOut;
+
+        const std::lock_guard<std::mutex> lock(status_mutex);
 
         if (rendMod.type().compare("CONNECT_ECG") == 0)
         {
@@ -704,7 +771,10 @@ void SendCommand(const std::string &command)
             simControl.timestamp(ms);
             simControl.type(AMM::ControlType::RUN);
             mgr->WriteSimulationControl(simControl);
-            statusStorage["STATUS"] = "RUNNING";
+            {
+                const std::lock_guard<std::mutex> lock(status_mutex);
+                statusStorage["STATUS"] = "RUNNING";
+            }
         }
         else if (value.compare("STOP_SIM") == 0)
         {
@@ -713,7 +783,10 @@ void SendCommand(const std::string &command)
             simControl.timestamp(ms);
             simControl.type(AMM::ControlType::HALT);
             mgr->WriteSimulationControl(simControl);
-            statusStorage["STATUS"] = "STOPPED";
+            {
+                const std::lock_guard<std::mutex> lock(status_mutex);
+                statusStorage["STATUS"] = "STOPPED";
+            }
         }
         else if (value.compare("PAUSE_SIM") == 0)
         {
@@ -722,14 +795,23 @@ void SendCommand(const std::string &command)
             simControl.timestamp(ms);
             simControl.type(AMM::ControlType::HALT);
             mgr->WriteSimulationControl(simControl);
-            statusStorage["STATUS"] = "PAUSED";
+            {
+                const std::lock_guard<std::mutex> lock(status_mutex);
+                statusStorage["STATUS"] = "PAUSED";
+            }
         }
         else if (value.compare("RESET_SIM") == 0)
         {
-            statusStorage["STATUS"] = "NOT RUNNING";
-            statusStorage["TICK"] = "0";
-            statusStorage["TIME"] = "0";
-            nodeDataStorage.clear();
+            {
+                const std::lock_guard<std::mutex> lock(status_mutex);
+                statusStorage["STATUS"] = "NOT RUNNING";
+                statusStorage["TICK"] = "0";
+                statusStorage["TIME"] = "0";
+            }
+            {
+                const std::lock_guard<std::mutex> lock(nds_mutex);
+                nodeDataStorage.clear();
+            }
             ResetLabs();
             AMM::SimulationControl simControl;
             auto ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
@@ -752,6 +834,9 @@ void SendCommand(const std::string &command)
             //       the else statement below will forward. Module manager would receive the command and process
             std::string command = "supervisorctl start amm_startup";
             int result = boost::process::system(command);
+            if (result != 0) {
+                LOG_WARNING << "supervisorctl command failed with code: " << result;
+            }
         }
         else
         {
@@ -912,10 +997,16 @@ private:
         StringBuffer s;
         Writer<StringBuffer> writer(s);
 
+        std::string scenario;
         std::ifstream t("static/current_scenario.txt");
-        std::string scenario((std::istreambuf_iterator<char>(t)),
-                             std::istreambuf_iterator<char>());
-        t.close();
+        if (t.is_open()) {
+            scenario = std::string((std::istreambuf_iterator<char>(t)),
+                                   std::istreambuf_iterator<char>());
+            t.close();
+        } else {
+            LOG_WARNING << "Could not open current_scenario.txt";
+            scenario = "unknown";
+        }
 
         writer.StartObject();
         writer.Key("name");
@@ -1181,114 +1272,158 @@ private:
     void executeCommand(const Rest::Request &request,
                         Http::ResponseWriter response)
     {
-        Document document;
-        document.Parse(request.body().c_str());
-        std::string payload = document["payload"].GetString();
+        try {
+            Document document;
+            document.Parse(request.body().c_str());
+            if (document.HasParseError() || !document.HasMember("payload")) {
+                response.send(Pistache::Http::Code::Bad_Request,
+                             "{\"error\":\"Invalid JSON or missing payload\"}");
+                return;
+            }
+            std::string payload = document["payload"].GetString();
 
-        SendCommand(payload);
+            SendCommand(payload);
 
-        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
-        response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
-        response.send(Pistache::Http::Code::Ok,
-                      "{\"message\":\"Command executed\"}");
+            response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+            response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
+            response.send(Pistache::Http::Code::Ok,
+                          "{\"message\":\"Command executed\"}");
+        } catch (const std::exception& e) {
+            LOG_ERROR << "JSON parsing error in executeCommand: " << e.what();
+            response.send(Pistache::Http::Code::Bad_Request,
+                         "{\"error\":\"JSON parsing failed\"}");
+        }
     }
 
     void executePhysiologyModification(const Rest::Request &request,
                                        Http::ResponseWriter response)
     {
-        std::string type, location, practitioner, payload;
-        Document document;
-        document.Parse(request.body().c_str());
-        if (document.HasMember("type"))
-        {
-            type = document["type"].GetString();
+        try {
+            std::string type, location, practitioner, payload;
+            Document document;
+            document.Parse(request.body().c_str());
+            if (document.HasParseError()) {
+                response.send(Pistache::Http::Code::Bad_Request,
+                             "{\"error\":\"Invalid JSON\"}");
+                return;
+            }
+            if (document.HasMember("type"))
+            {
+                type = document["type"].GetString();
+            }
+            if (document.HasMember("location"))
+            {
+                location = document["location"].GetString();
+            }
+            if (document.HasMember("practitioner"))
+            {
+                practitioner = document["practitioner"].GetString();
+            }
+            if (document.HasMember("payload"))
+            {
+                payload = document["payload"].GetString();
+            }
+            AMM::UUID erID = SendEventRecord(location, practitioner, type);
+            SendPhysiologyModification(erID, type, payload);
+            response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+            response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
+            response.send(Pistache::Http::Code::Ok,
+                          "{\"message\":\"Physiology modification published\"}");
+        } catch (const std::exception& e) {
+            LOG_ERROR << "JSON parsing error in executePhysiologyModification: " << e.what();
+            response.send(Pistache::Http::Code::Bad_Request,
+                         "{\"error\":\"JSON parsing failed\"}");
         }
-        if (document.HasMember("location"))
-        {
-            location = document["location"].GetString();
-        }
-        if (document.HasMember("practitioner"))
-        {
-            practitioner = document["practitioner"].GetString();
-        }
-        if (document.HasMember("payload"))
-        {
-            payload = document["payload"].GetString();
-        }
-        AMM::UUID erID = SendEventRecord(location, practitioner, type);
-        SendPhysiologyModification(erID, type, payload);
-        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
-        response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
-        response.send(Pistache::Http::Code::Ok,
-                      "{\"message\":\"Physiology modification published\"}");
     }
 
     void executeRenderModification(const Rest::Request &request,
                                    Http::ResponseWriter response)
     {
-        std::string type, location, practitioner, payload;
-        Document document;
-        document.Parse(request.body().c_str());
-        if (document.HasMember("type"))
-        {
-            type = document["type"].GetString();
+        try {
+            std::string type, location, practitioner, payload;
+            Document document;
+            document.Parse(request.body().c_str());
+            if (document.HasParseError()) {
+                response.send(Pistache::Http::Code::Bad_Request,
+                             "{\"error\":\"Invalid JSON\"}");
+                return;
+            }
+            if (document.HasMember("type"))
+            {
+                type = document["type"].GetString();
+            }
+            if (document.HasMember("location"))
+            {
+                location = document["location"].GetString();
+            }
+            if (document.HasMember("practitioner"))
+            {
+                practitioner = document["practitioner"].GetString();
+            }
+            if (document.HasMember("payload"))
+            {
+                payload = document["payload"].GetString();
+            }
+            AMM::UUID erID = SendEventRecord(location, practitioner, type);
+            SendRenderModification(erID, type, payload);
+            response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+            response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
+            response.send(Pistache::Http::Code::Ok,
+                          "{\"message\":\"Render modification published\"}");
+        } catch (const std::exception& e) {
+            LOG_ERROR << "JSON parsing error in executeRenderModification: " << e.what();
+            response.send(Pistache::Http::Code::Bad_Request,
+                         "{\"error\":\"JSON parsing failed\"}");
         }
-        if (document.HasMember("location"))
-        {
-            location = document["location"].GetString();
-        }
-        if (document.HasMember("practitioner"))
-        {
-            practitioner = document["practitioner"].GetString();
-        }
-        if (document.HasMember("payload"))
-        {
-            payload = document["payload"].GetString();
-        }
-        AMM::UUID erID = SendEventRecord(location, practitioner, type);
-        SendRenderModification(erID, type, payload);
-        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
-        response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
-        response.send(Pistache::Http::Code::Ok,
-                      "{\"message\":\"Render modification published\"}");
     }
 
     void executePerformanceAssessment(const Rest::Request &request,
                                       Http::ResponseWriter response)
     {
-        std::string type, location, practitioner, payload, info, step, comment;
-        Document document;
-        document.Parse(request.body().c_str());
-        if (document.HasMember("type"))
-        {
-            type = document["type"].GetString();
+        try {
+            std::string type, location, practitioner, payload, info, step, comment;
+            Document document;
+            document.Parse(request.body().c_str());
+            if (document.HasParseError()) {
+                response.send(Pistache::Http::Code::Bad_Request,
+                             "{\"error\":\"Invalid JSON\"}");
+                return;
+            }
+            if (document.HasMember("type"))
+            {
+                type = document["type"].GetString();
+            }
+            if (document.HasMember("location"))
+            {
+                location = document["location"].GetString();
+            }
+            if (document.HasMember("practitioner"))
+            {
+                practitioner = document["practitioner"].GetString();
+            }
+            if (document.HasMember("info"))
+            {
+                info = document["info"].GetString();
+            }
+            if (document.HasMember("step"))
+            {
+                step = document["step"].GetString();
+            }
+            if (document.HasMember("comment"))
+            {
+                comment = document["comment"].GetString();
+            }
+            AMM::UUID erID = SendEventRecord(location, practitioner, type);
+            SendPerformanceAssessment(erID, type, info, step, comment);
+            response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+            response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
+            response.send(Pistache::Http::Code::Ok,
+                          "{\"message\":\"Performance assessment published\"}");
+        } catch (const std::exception& e) {
+            LOG_ERROR << "JSON parsing error in executePerformanceAssessment: " << e.what();
+            response.send(Pistache::Http::Code::Bad_Request,
+                         "{\"error\":\"JSON parsing failed\"}");
         }
-        if (document.HasMember("location"))
-        {
-            location = document["location"].GetString();
-        }
-        if (document.HasMember("practitioner"))
-        {
-            practitioner = document["practitioner"].GetString();
-        }
-        if (document.HasMember("info"))
-        {
-            info = document["info"].GetString();
-        }
-        if (document.HasMember("step"))
-        {
-            step = document["step"].GetString();
-        }
-        if (document.HasMember("comment"))
-        {
-            comment = document["comment"].GetString();
-        }
-        AMM::UUID erID = SendEventRecord(location, practitioner, type);
-        SendPerformanceAssessment(erID, type, info, step, comment);
-        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
-        response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
-        response.send(Pistache::Http::Code::Ok,
-                      "{\"message\":\"Performance assessment published\"}");
     }
 
     void executeOptions(const Rest::Request &request,
@@ -1340,42 +1475,46 @@ private:
         auto id = request.param(":id").as<std::string>();
         StringBuffer s;
         Writer<StringBuffer> writer(s);
-        db << "SELECT "
-              "module_id AS module_id,"
-              "module_name AS module_name,"
-              "description AS description,"
-              "capabilities as capabilities,"
-              "manufacturer as manufacturer,"
-              "model as model "
-              " FROM "
-              " module_capabilities "
-              " WHERE module_id = ?"
-           << id >>
-            [&](string module_id, string module_guid, string module_name, string description,
-                string capabilities, string manufacturer, string model)
+
         {
-            writer.StartObject();
+            const std::lock_guard<std::mutex> lock(db_mutex);
+            db << "SELECT "
+                  "module_id AS module_id,"
+                  "module_name AS module_name,"
+                  "description AS description,"
+                  "capabilities as capabilities,"
+                  "manufacturer as manufacturer,"
+                  "model as model "
+                  " FROM "
+                  " module_capabilities "
+                  " WHERE module_id = ?"
+               << id >>
+                [&](string module_id, string module_guid, string module_name, string description,
+                    string capabilities, string manufacturer, string model)
+            {
+                writer.StartObject();
 
-            writer.Key("Module_ID");
-            writer.String(module_id.c_str());
+                writer.Key("Module_ID");
+                writer.String(module_id.c_str());
 
-            writer.Key("Module_Name");
-            writer.String(module_name.c_str());
+                writer.Key("Module_Name");
+                writer.String(module_name.c_str());
 
-            writer.Key("Description");
-            writer.String(description.c_str());
+                writer.Key("Description");
+                writer.String(description.c_str());
 
-            writer.Key("Manufacturer");
-            writer.String(manufacturer.c_str());
+                writer.Key("Manufacturer");
+                writer.String(manufacturer.c_str());
 
-            writer.Key("Model");
-            writer.String(model.c_str());
+                writer.Key("Model");
+                writer.String(model.c_str());
 
-            writer.Key("Module_Capabilities");
-            writer.String(capabilities.c_str());
+                writer.Key("Module_Capabilities");
+                writer.String(capabilities.c_str());
 
-            writer.EndObject();
-        };
+                writer.EndObject();
+            };
+        }
 
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         response.send(Http::Code::Ok, s.GetString(), MIME(Application, Json));
@@ -1387,42 +1526,46 @@ private:
         auto guid = request.param(":guid").as<std::string>();
         StringBuffer s;
         Writer<StringBuffer> writer(s);
-        db << "SELECT "
-              "module_id AS module_id,"
-              "module_guid as module_guid,"
-              "module_name AS module_name,"
-              "capabilities as capabilities,"
-              "manufacturer as manufacturer,"
-              "model as model "
-              " FROM "
-              " module_capabilities "
-              " WHERE module_guid = ?"
-           << guid >>
-            [&](string module_id, string module_guid, string module_name,
-                string capabilities, string manufacturer, string model)
+
         {
-            writer.StartObject();
+            const std::lock_guard<std::mutex> lock(db_mutex);
+            db << "SELECT "
+                  "module_id AS module_id,"
+                  "module_guid as module_guid,"
+                  "module_name AS module_name,"
+                  "capabilities as capabilities,"
+                  "manufacturer as manufacturer,"
+                  "model as model "
+                  " FROM "
+                  " module_capabilities "
+                  " WHERE module_guid = ?"
+               << guid >>
+                [&](string module_id, string module_guid, string module_name,
+                    string capabilities, string manufacturer, string model)
+            {
+                writer.StartObject();
 
-            writer.Key("Module_ID");
-            writer.String(module_id.c_str());
+                writer.Key("Module_ID");
+                writer.String(module_id.c_str());
 
-            writer.Key("Module_GUID");
-            writer.String(module_guid.c_str());
+                writer.Key("Module_GUID");
+                writer.String(module_guid.c_str());
 
-            writer.Key("Module_Name");
-            writer.String(module_name.c_str());
+                writer.Key("Module_Name");
+                writer.String(module_name.c_str());
 
-            writer.Key("Manufacturer");
-            writer.String(manufacturer.c_str());
+                writer.Key("Manufacturer");
+                writer.String(manufacturer.c_str());
 
-            writer.Key("Model");
-            writer.String(model.c_str());
+                writer.Key("Model");
+                writer.String(model.c_str());
 
-            writer.Key("Module_Capabilities");
-            writer.String(capabilities.c_str());
+                writer.Key("Module_Capabilities");
+                writer.String(capabilities.c_str());
 
-            writer.EndObject();
-        };
+                writer.EndObject();
+            };
+        }
 
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         response.send(Http::Code::Ok, s.GetString(), MIME(Application, Json));
@@ -1437,8 +1580,12 @@ private:
         int totalCount = 0;
         int coreCount = 0;
         int otherCount = 0;
-        db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities" >> totalCount;
-        // db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities where module_name LIKE 'AMM_%'" >> coreCount;
+
+        {
+            const std::lock_guard<std::mutex> lock(db_mutex);
+            db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities" >> totalCount;
+            // db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities where module_name LIKE 'AMM_%'" >> coreCount;
+        }
 
         otherCount = totalCount - coreCount;
 
@@ -1460,10 +1607,15 @@ private:
         StringBuffer s;
         Writer<StringBuffer> writer(s);
         writer.StartArray();
-        db << "SELECT DISTINCT module_name FROM module_capabilities where module_name NOT LIKE 'AMM_%'" >> [&](string module_name)
+
         {
-            writer.String(module_name.c_str());
-        };
+            const std::lock_guard<std::mutex> lock(db_mutex);
+            db << "SELECT DISTINCT module_name FROM module_capabilities where module_name NOT LIKE 'AMM_%'" >> [&](string module_name)
+            {
+                writer.String(module_name.c_str());
+            };
+        }
+
         writer.EndArray();
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         response.send(Http::Code::Ok, s.GetString(), MIME(Application, Json));
@@ -1474,41 +1626,45 @@ private:
         StringBuffer s;
         Writer<StringBuffer> writer(s);
         writer.StartArray();
-        db << "SELECT "
-              "module_capabilities.module_id AS module_id,"
-              "module_capabilities.module_name AS module_name,"
-              "module_capabilities.description AS description,"
-              "module_capabilities.capabilities as capabilities,"
-              "module_capabilities.manufacturer as manufacturer,"
-              "module_capabilities.model as model "
-              " FROM "
-              " module_capabilities; " >>
-            [&](string module_id, string module_name, string description,
-                string capabilities,
-                string manufacturer, string model)
+
         {
-            writer.StartObject();
+            const std::lock_guard<std::mutex> lock(db_mutex);
+            db << "SELECT "
+                  "module_capabilities.module_id AS module_id,"
+                  "module_capabilities.module_name AS module_name,"
+                  "module_capabilities.description AS description,"
+                  "module_capabilities.capabilities as capabilities,"
+                  "module_capabilities.manufacturer as manufacturer,"
+                  "module_capabilities.model as model "
+                  " FROM "
+                  " module_capabilities; " >>
+                [&](string module_id, string module_name, string description,
+                    string capabilities,
+                    string manufacturer, string model)
+            {
+                writer.StartObject();
 
-            writer.Key("Module_ID");
-            writer.String(module_id.c_str());
+                writer.Key("Module_ID");
+                writer.String(module_id.c_str());
 
-            writer.Key("Module_Name");
-            writer.String(module_name.c_str());
+                writer.Key("Module_Name");
+                writer.String(module_name.c_str());
 
-            writer.Key("Description");
-            writer.String(description.c_str());
+                writer.Key("Description");
+                writer.String(description.c_str());
 
-            writer.Key("Manufacturer");
-            writer.String(manufacturer.c_str());
+                writer.Key("Manufacturer");
+                writer.String(manufacturer.c_str());
 
-            writer.Key("Model");
-            writer.String(model.c_str());
+                writer.Key("Model");
+                writer.String(model.c_str());
 
-            writer.Key("Module_Capabilities");
-            writer.String(capabilities.c_str());
+                writer.Key("Module_Capabilities");
+                writer.String(capabilities.c_str());
 
-            writer.EndObject();
-        };
+                writer.EndObject();
+            };
+        }
 
         writer.EndArray();
 
@@ -1522,35 +1678,39 @@ private:
         StringBuffer s;
         Writer<StringBuffer> writer(s);
         writer.StartArray();
-        db << "SELECT "
-              "module_capabilities.module_id as module_id,"
-              "module_capabilities.module_name as module_name,"
-              "events.source,"
-              "events.topic,"
-              "events.timestamp,"
-              "events.data "
-              "FROM "
-              "events "
-              "LEFT JOIN module_capabilities "
-              "ON "
-              "events.source = module_capabilities.module_guid" >>
-            [&](string module_id, string module_name, string source, string topic, int64_t timestamp, string data)
+
         {
-            writer.StartObject();
-            writer.Key("module_id");
-            writer.String(module_id.c_str());
-            writer.Key("source");
-            writer.String(module_name.c_str());
-            writer.Key("module_guid");
-            writer.String(source.c_str());
-            writer.Key("timestamp");
-            writer.Uint64(timestamp);
-            writer.Key("topic");
-            writer.String(topic.c_str());
-            writer.Key("message");
-            writer.String(data.c_str());
-            writer.EndObject();
-        };
+            const std::lock_guard<std::mutex> lock(db_mutex);
+            db << "SELECT "
+                  "module_capabilities.module_id as module_id,"
+                  "module_capabilities.module_name as module_name,"
+                  "events.source,"
+                  "events.topic,"
+                  "events.timestamp,"
+                  "events.data "
+                  "FROM "
+                  "events "
+                  "LEFT JOIN module_capabilities "
+                  "ON "
+                  "events.source = module_capabilities.module_guid" >>
+                [&](string module_id, string module_name, string source, string topic, int64_t timestamp, string data)
+            {
+                writer.StartObject();
+                writer.Key("module_id");
+                writer.String(module_id.c_str());
+                writer.Key("source");
+                writer.String(module_name.c_str());
+                writer.Key("module_guid");
+                writer.String(source.c_str());
+                writer.Key("timestamp");
+                writer.Uint64(timestamp);
+                writer.Key("topic");
+                writer.String(topic.c_str());
+                writer.Key("message");
+                writer.String(data.c_str());
+                writer.EndObject();
+            };
+        }
 
         writer.EndArray();
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
@@ -1561,26 +1721,30 @@ private:
                         Http::ResponseWriter response)
     {
         std::ostringstream s;
-        db << "SELECT "
-              "module_capabilities.module_name,"
-              "events.source,"
-              "events.topic,"
-              "events.tick,"
-              "events.timestamp,"
-              "events.data "
-              "FROM "
-              "events "
-              "LEFT JOIN module_capabilities "
-              "ON "
-              "events.source = module_capabilities.module_guid" >>
-            [&](string module_name, string source, string topic, int64_t tick, int64_t timestamp,
-                string data)
+
         {
-            std::time_t temp = timestamp;
-            std::tm *t = std::gmtime(&temp);
-            s << std::put_time(t, "%Y-%m-%d %I:%M:%S %p") << "," << module_name << "," << source << "," << topic
-              << "," << data << std::endl;
-        };
+            const std::lock_guard<std::mutex> lock(db_mutex);
+            db << "SELECT "
+                  "module_capabilities.module_name,"
+                  "events.source,"
+                  "events.topic,"
+                  "events.tick,"
+                  "events.timestamp,"
+                  "events.data "
+                  "FROM "
+                  "events "
+                  "LEFT JOIN module_capabilities "
+                  "ON "
+                  "events.source = module_capabilities.module_guid" >>
+                [&](string module_name, string source, string topic, int64_t tick, int64_t timestamp,
+                    string data)
+            {
+                std::time_t temp = timestamp;
+                std::tm *t = std::gmtime(&temp);
+                s << std::put_time(t, "%Y-%m-%d %I:%M:%S %p") << "," << module_name << "," << source << "," << topic
+                  << "," << data << std::endl;
+            };
+        }
 
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         auto csvHeader = Http::Header::Raw("Content-Disposition", "attachment;filename=amm_timeline_log.csv");
@@ -1594,33 +1758,37 @@ private:
         StringBuffer s;
         Writer<StringBuffer> writer(s);
         writer.StartArray();
-        db << "SELECT "
-              "logs.module_name, "
-              "logs.module_guid, "
-              "logs.module_id, "
-              "logs.message,"
-              "logs.log_level,"
-              "logs.timestamp "
-              "FROM "
-              "logs " >>
-            [&](string module_name, string module_guid, string module_id, string message, string log_level,
-                int64_t timestamp)
+
         {
-            writer.StartObject();
-            writer.Key("source");
-            writer.String(module_name.c_str());
-            writer.Key("module_guid");
-            writer.String(module_guid.c_str());
-            writer.Key("module_id");
-            writer.String(module_id.c_str());
-            writer.Key("timestamp");
-            writer.Uint64(timestamp);
-            writer.Key("log_level");
-            writer.String(log_level.c_str());
-            writer.Key("message");
-            writer.String(message.c_str());
-            writer.EndObject();
-        };
+            const std::lock_guard<std::mutex> lock(db_mutex);
+            db << "SELECT "
+                  "logs.module_name, "
+                  "logs.module_guid, "
+                  "logs.module_id, "
+                  "logs.message,"
+                  "logs.log_level,"
+                  "logs.timestamp "
+                  "FROM "
+                  "logs " >>
+                [&](string module_name, string module_guid, string module_id, string message, string log_level,
+                    int64_t timestamp)
+            {
+                writer.StartObject();
+                writer.Key("source");
+                writer.String(module_name.c_str());
+                writer.Key("module_guid");
+                writer.String(module_guid.c_str());
+                writer.Key("module_id");
+                writer.String(module_id.c_str());
+                writer.Key("timestamp");
+                writer.Uint64(timestamp);
+                writer.Key("log_level");
+                writer.String(log_level.c_str());
+                writer.Key("message");
+                writer.String(message.c_str());
+                writer.EndObject();
+            };
+        }
 
         writer.EndArray();
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
@@ -1631,23 +1799,27 @@ private:
                              Http::ResponseWriter response)
     {
         std::ostringstream s;
-        db << "SELECT "
-              "logs.module_name, "
-              "logs.module_guid, "
-              "logs.module_id, "
-              "logs.message,"
-              "logs.log_level,"
-              "logs.timestamp "
-              "FROM "
-              "logs " >>
-            [&](string module_name, string module_guid, string module_id, string message, string log_level,
-                int64_t timestamp)
+
         {
-            std::time_t temp = timestamp;
-            std::tm *t = std::gmtime(&temp);
-            s << std::put_time(t, "%Y-%m-%d %I:%M:%S %p") << "," << log_level << "," << module_name << "," << message
-              << std::endl;
-        };
+            const std::lock_guard<std::mutex> lock(db_mutex);
+            db << "SELECT "
+                  "logs.module_name, "
+                  "logs.module_guid, "
+                  "logs.module_id, "
+                  "logs.message,"
+                  "logs.log_level,"
+                  "logs.timestamp "
+                  "FROM "
+                  "logs " >>
+                [&](string module_name, string module_guid, string module_id, string message, string log_level,
+                    int64_t timestamp)
+            {
+                std::time_t temp = timestamp;
+                std::tm *t = std::gmtime(&temp);
+                s << std::put_time(t, "%Y-%m-%d %I:%M:%S %p") << "," << log_level << "," << module_name << "," << message
+                  << std::endl;
+            };
+        }
 
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         auto csvHeader = Http::Header::Raw("Content-Disposition", "attachment;filename=amm_diagnostic_log.csv");
@@ -1661,24 +1833,26 @@ private:
         Writer<StringBuffer> writer(s);
         writer.StartArray();
 
-        auto nit = nodeDataStorage.begin();
-        while (nit != nodeDataStorage.end())
         {
-            writer.StartObject();
-            writer.Key(nit->first.c_str());
-            writer.Double(nit->second);
-            writer.EndObject();
-            ++nit;
+            const std::lock_guard<std::mutex> lock(nds_mutex);
+            for (const auto& [key, value] : nodeDataStorage)
+            {
+                writer.StartObject();
+                writer.Key(key.c_str());
+                writer.Double(value);
+                writer.EndObject();
+            }
         }
 
-        auto sit = statusStorage.begin();
-        while (sit != statusStorage.end())
         {
-            writer.StartObject();
-            writer.Key(sit->first.c_str());
-            writer.String(sit->second.c_str());
-            writer.EndObject();
-            ++sit;
+            const std::lock_guard<std::mutex> lock(status_mutex);
+            for (const auto& [key, value] : statusStorage)
+            {
+                writer.StartObject();
+                writer.Key(key.c_str());
+                writer.String(value.c_str());
+                writer.EndObject();
+            }
         }
 
         writer.EndArray();
@@ -1688,7 +1862,11 @@ private:
 
     void getLabsReport(const Rest::Request &request, Http::ResponseWriter response)
     {
-        std::string labReport = boost::algorithm::join(labsStorage, "\n");
+        std::string labReport;
+        {
+            const std::lock_guard<std::mutex> lock(labs_mutex);
+            labReport = boost::algorithm::join(labsStorage, "\n");
+        }
         auto mime = Http::Mime::MediaType::fromString("text/csv");
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         response.send(Http::Code::Ok, labReport, mime);
@@ -1696,8 +1874,9 @@ private:
 
     void getNode(const Rest::Request &request, Http::ResponseWriter response)
     {
-
         auto name = request.param(":name").as<std::string>();
+
+        const std::lock_guard<std::mutex> lock(nds_mutex);
         auto it = nodeDataStorage.find(name);
         if (it != nodeDataStorage.end())
         {
