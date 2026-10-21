@@ -24,6 +24,32 @@
 
 #include "thirdparty/sqlite_modern_cpp.h"
 
+// Undefine syslog integer macros that conflict with plog's LOG_* stream macros.
+// On some systems (e.g. Jetson Ubuntu), DDS/system headers pull in <syslog.h>
+// after plog, redefining LOG_DEBUG/LOG_INFO/etc. as integers and breaking <<.
+#ifdef LOG_DEBUG
+#undef LOG_DEBUG
+#endif
+#ifdef LOG_INFO
+#undef LOG_INFO
+#endif
+#ifdef LOG_WARNING
+#undef LOG_WARNING
+#endif
+#ifdef LOG_ERROR
+#undef LOG_ERROR
+#endif
+#ifdef LOG_FATAL
+#undef LOG_FATAL
+#endif
+// Restore plog stream macros using LOG() — plog's internal base macro.
+// (Older plog versions don't define PLOG; LOG(severity) is the stable form.)
+#define LOG_DEBUG   LOG(plog::debug)
+#define LOG_INFO    LOG(plog::info)
+#define LOG_WARNING LOG(plog::warning)
+#define LOG_ERROR   LOG(plog::error)
+#define LOG_FATAL   LOG(plog::fatal)
+
 using namespace AMM;
 using namespace std;
 using namespace std::chrono;
