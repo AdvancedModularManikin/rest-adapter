@@ -690,7 +690,7 @@ const std::string configFile = "config/rest_adapter_amm.xml";
 DDSManager<RESTListener> *mgr;
 AMM::UUID m_uuid;
 
-database db("amm.db");
+database db("mohses.db");
 
 void SendReset()
 {
@@ -866,6 +866,21 @@ void SendCommand(const std::string &command)
         }
         else
         {
+            if (!value.compare(0, loadPrefix.size(), loadPrefix))
+            {
+                const std::lock_guard<std::mutex> lock(status_mutex);
+                statusStorage["STATE"] = value.substr(loadPrefix.size());
+            }
+            else if (!value.compare(0, loadScenarioPrefix.size(), loadScenarioPrefix))
+            {
+                const std::lock_guard<std::mutex> lock(status_mutex);
+                statusStorage["SCENARIO"] = value.substr(loadScenarioPrefix.size());
+            }
+            else if (!value.compare(0, loadPatientPrefix.size(), loadPatientPrefix))
+            {
+                const std::lock_guard<std::mutex> lock(status_mutex);
+                statusStorage["PATIENT"] = value.substr(loadPatientPrefix.size());
+            }
             // Publish a SYS Command
             AMM::Command cmdInstance;
             cmdInstance.message(command);
@@ -1011,6 +1026,8 @@ private:
 
         Routes::Get(router, "/scenarios",
                     Routes::bind(&DDSEndpoint::getScenarios, this));
+        Routes::Get(router, "/scenario/:name",
+                    Routes::bind(&DDSEndpoint::getScenario, this));
 
         Routes::Get(router, "/states", Routes::bind(&DDSEndpoint::getStates, this));
         Routes::Get(router, "/states/:name/delete",
@@ -1024,14 +1041,17 @@ private:
         Writer<StringBuffer> writer(s);
 
         std::string scenario;
-        std::ifstream t("static/current_scenario.txt");
-        if (t.is_open()) {
-            scenario = std::string((std::istreambuf_iterator<char>(t)),
-                                   std::istreambuf_iterator<char>());
-            t.close();
-        } else {
-            LOG_WARNING << "Could not open current_scenario.txt";
-            scenario = "unknown";
+        {
+            const std::lock_guard<std::mutex> lock(status_mutex);
+            scenario = statusStorage["SCENARIO"];
+        }
+        if (scenario.empty()) {
+            std::ifstream t("static/current_scenario.txt");
+            if (t.is_open()) {
+                scenario = std::string((std::istreambuf_iterator<char>(t)),
+                                       std::istreambuf_iterator<char>());
+                t.close();
+            }
         }
 
         writer.StartObject();
@@ -1150,6 +1170,44 @@ private:
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         response.send(Pistache::Http::Code::Ok, s.GetString(),
                       MIME(Application, Json));
+    }
+
+    void getScenario(const Rest::Request &request,
+                     Http::ResponseWriter response)
+    {
+        std::string name = request.param(":name").as<std::string>();
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+
+        if (name.empty() || name == "." || name == ".." ||
+            name.find('/') != std::string::npos ||
+            name.find('\\') != std::string::npos ||
+            name.find("..") != std::string::npos ||
+            name.find('\0') != std::string::npos ||
+            path(name).filename().string() != name)
+        {
+            LOG_WARNING << "Rejected invalid scenario filename request: " << name;
+            response.send(Pistache::Http::Code::Bad_Request, "Invalid scenario filename");
+            return;
+        }
+
+        try
+        {
+            path scenarioFile = path(scenario_path) / path(name).filename();
+
+            if (!exists(scenarioFile) || !is_regular_file(scenarioFile))
+            {
+                response.send(Pistache::Http::Code::Not_Found, "Scenario file does not exist");
+                return;
+            }
+
+            LOG_INFO << "Received a request to GET a scenario file, so we're serving this up: " << scenarioFile.string();
+            Http::serveFile(response, scenarioFile.string().c_str(), MIME(Application, Xml));
+        }
+        catch (const filesystem_error &e)
+        {
+            LOG_ERROR << "Filesystem error serving scenario file: " << e.what();
+            response.send(Pistache::Http::Code::Not_Found, "Scenario file does not exist");
+        }
     }
 
     void getPatients(const Rest::Request &request,
@@ -1502,10 +1560,12 @@ private:
         StringBuffer s;
         Writer<StringBuffer> writer(s);
 
+        try
         {
             const std::lock_guard<std::mutex> lock(db_mutex);
             db << "SELECT "
                   "module_id AS module_id,"
+                  "module_guid as module_guid,"
                   "module_name AS module_name,"
                   "description AS description,"
                   "capabilities as capabilities,"
@@ -1522,6 +1582,9 @@ private:
 
                 writer.Key("Module_ID");
                 writer.String(module_id.c_str());
+
+                writer.Key("Module_GUID");
+                writer.String(module_guid.c_str());
 
                 writer.Key("Module_Name");
                 writer.String(module_name.c_str());
@@ -1541,6 +1604,10 @@ private:
                 writer.EndObject();
             };
         }
+        catch (const std::exception &e)
+        {
+            LOG_ERROR << "Database error in getModuleById: " << e.what();
+        }
 
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         response.send(Http::Code::Ok, s.GetString(), MIME(Application, Json));
@@ -1553,6 +1620,7 @@ private:
         StringBuffer s;
         Writer<StringBuffer> writer(s);
 
+        try
         {
             const std::lock_guard<std::mutex> lock(db_mutex);
             db << "SELECT "
@@ -1592,6 +1660,10 @@ private:
                 writer.EndObject();
             };
         }
+        catch (const std::exception &e)
+        {
+            LOG_ERROR << "Database error in getModuleByGuid: " << e.what();
+        }
 
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         response.send(Http::Code::Ok, s.GetString(), MIME(Application, Json));
@@ -1607,10 +1679,15 @@ private:
         int coreCount = 0;
         int otherCount = 0;
 
+        try
         {
             const std::lock_guard<std::mutex> lock(db_mutex);
             db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities" >> totalCount;
             // db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities where module_name LIKE 'AMM_%'" >> coreCount;
+        }
+        catch (const std::exception &e)
+        {
+            LOG_ERROR << "Database error in getModuleCount: " << e.what();
         }
 
         otherCount = totalCount - coreCount;
@@ -1634,12 +1711,17 @@ private:
         Writer<StringBuffer> writer(s);
         writer.StartArray();
 
+        try
         {
             const std::lock_guard<std::mutex> lock(db_mutex);
             db << "SELECT DISTINCT module_name FROM module_capabilities where module_name NOT LIKE 'AMM_%'" >> [&](string module_name)
             {
                 writer.String(module_name.c_str());
             };
+        }
+        catch (const std::exception &e)
+        {
+            LOG_ERROR << "Database error in getOtherModules: " << e.what();
         }
 
         writer.EndArray();
@@ -1653,6 +1735,7 @@ private:
         Writer<StringBuffer> writer(s);
         writer.StartArray();
 
+        try
         {
             const std::lock_guard<std::mutex> lock(db_mutex);
             db << "SELECT "
@@ -1691,6 +1774,10 @@ private:
                 writer.EndObject();
             };
         }
+        catch (const std::exception &e)
+        {
+            LOG_ERROR << "Database error in getModules: " << e.what();
+        }
 
         writer.EndArray();
 
@@ -1705,6 +1792,7 @@ private:
         Writer<StringBuffer> writer(s);
         writer.StartArray();
 
+        try
         {
             const std::lock_guard<std::mutex> lock(db_mutex);
             db << "SELECT "
@@ -1737,6 +1825,10 @@ private:
                 writer.EndObject();
             };
         }
+        catch (const std::exception &e)
+        {
+            LOG_ERROR << "Database error in getEventLog: " << e.what();
+        }
 
         writer.EndArray();
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
@@ -1748,13 +1840,13 @@ private:
     {
         std::ostringstream s;
 
+        try
         {
             const std::lock_guard<std::mutex> lock(db_mutex);
             db << "SELECT "
                   "module_capabilities.module_name,"
                   "events.source,"
                   "events.topic,"
-                  "events.tick,"
                   "events.timestamp,"
                   "events.data "
                   "FROM "
@@ -1762,14 +1854,23 @@ private:
                   "LEFT JOIN module_capabilities "
                   "ON "
                   "events.source = module_capabilities.module_guid" >>
-                [&](string module_name, string source, string topic, int64_t tick, int64_t timestamp,
+                [&](string module_name, string source, string topic, int64_t timestamp,
                     string data)
             {
-                std::time_t temp = timestamp;
+                std::time_t temp = (timestamp > 10000000000LL) ? (timestamp / 1000) : timestamp;
                 std::tm *t = std::gmtime(&temp);
-                s << std::put_time(t, "%Y-%m-%d %I:%M:%S %p") << "," << module_name << "," << source << "," << topic
+                if (t) {
+                    s << std::put_time(t, "%Y-%m-%d %I:%M:%S %p");
+                } else {
+                    s << timestamp;
+                }
+                s << "," << module_name << "," << source << "," << topic
                   << "," << data << std::endl;
             };
+        }
+        catch (const std::exception &e)
+        {
+            LOG_ERROR << "Database error in getEventLogCSV: " << e.what();
         }
 
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
@@ -1785,6 +1886,7 @@ private:
         Writer<StringBuffer> writer(s);
         writer.StartArray();
 
+        try
         {
             const std::lock_guard<std::mutex> lock(db_mutex);
             db << "SELECT "
@@ -1815,6 +1917,10 @@ private:
                 writer.EndObject();
             };
         }
+        catch (const std::exception &e)
+        {
+            LOG_ERROR << "Database error in getDiagnosticLog: " << e.what();
+        }
 
         writer.EndArray();
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
@@ -1826,6 +1932,7 @@ private:
     {
         std::ostringstream s;
 
+        try
         {
             const std::lock_guard<std::mutex> lock(db_mutex);
             db << "SELECT "
@@ -1840,11 +1947,20 @@ private:
                 [&](string module_name, string module_guid, string module_id, string message, string log_level,
                     int64_t timestamp)
             {
-                std::time_t temp = timestamp;
+                std::time_t temp = (timestamp > 10000000000LL) ? (timestamp / 1000) : timestamp;
                 std::tm *t = std::gmtime(&temp);
-                s << std::put_time(t, "%Y-%m-%d %I:%M:%S %p") << "," << log_level << "," << module_name << "," << message
+                if (t) {
+                    s << std::put_time(t, "%Y-%m-%d %I:%M:%S %p");
+                } else {
+                    s << timestamp;
+                }
+                s << "," << log_level << "," << module_name << "," << message
                   << std::endl;
             };
+        }
+        catch (const std::exception &e)
+        {
+            LOG_ERROR << "Database error in getDiagnosticLogCSV: " << e.what();
         }
 
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
