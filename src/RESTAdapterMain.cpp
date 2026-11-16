@@ -610,6 +610,47 @@ public:
         }
     }
 
+    void onNewModuleConfiguration(AMM::ModuleConfiguration &mc, SampleInfo_t *info)
+    {
+        if (mc.name() == "physiology_engine")
+        {
+            std::string capabilities = mc.capabilities_configuration().to_string();
+            std::size_t namePos = capabilities.find("name=\"state_file\"");
+            if (namePos == std::string::npos)
+            {
+                namePos = capabilities.find("name='state_file'");
+            }
+            if (namePos != std::string::npos)
+            {
+                std::size_t tagStart = capabilities.rfind('<', namePos);
+                std::size_t tagEnd = capabilities.find('>', namePos);
+                if (tagStart != std::string::npos && tagEnd != std::string::npos && tagEnd > tagStart)
+                {
+                    std::string tag = capabilities.substr(tagStart, tagEnd - tagStart + 1);
+                    std::size_t valPos = tag.find("value=");
+                    if (valPos != std::string::npos && valPos + 6 < tag.size())
+                    {
+                        char quote = tag[valPos + 6];
+                        if (quote == '"' || quote == '\'')
+                        {
+                            std::size_t endQuote = tag.find(quote, valPos + 7);
+                            if (endQuote != std::string::npos)
+                            {
+                                std::string stateFile = tag.substr(valPos + 7, endQuote - (valPos + 7));
+                                if (!stateFile.empty())
+                                {
+                                    LOG_INFO << "ModuleConfiguration physiology_engine state_file: " << stateFile;
+                                    const std::lock_guard<std::mutex> lock(status_mutex);
+                                    statusStorage["STATE"] = stateFile;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     void onNewCommand(AMM::Command &c, SampleInfo_t *info)
     {
         std::string manikin_id = ExtractManikinIDFromString(c.message());
@@ -2376,6 +2417,7 @@ int main(int argc, char *argv[])
     mgr->CreateStatusSubscriber(&al, &RESTListener::onNewStatus);
     mgr->CreateRenderModificationSubscriber(&al, &RESTListener::onNewRenderModification);
     mgr->CreateSimulationControlSubscriber(&al, &RESTListener::onNewSimulationControl);
+    mgr->CreateModuleConfigurationSubscriber(&al, &RESTListener::onNewModuleConfiguration);
 
     mgr->CreateAssessmentPublisher();
     mgr->CreateRenderModificationPublisher();
