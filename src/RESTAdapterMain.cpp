@@ -1,7 +1,12 @@
 #include <mutex>
+#include <atomic>
+#include <csignal>
+#include <cctype>
 #include <chrono>
 #include <thread>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 #include <functional>
 #include <condition_variable>
 #include <stdexcept>
@@ -76,6 +81,7 @@ int discovery = 1;
 char hostname[HOST_NAME_MAX];
 
 std::string action_path = "Actions/";
+std::string assessment_path = "./assessments/";
 std::string state_path = "./states/";
 std::string patient_path = "./patients/";
 std::string scenario_path = "./static/scenarios/";
@@ -84,6 +90,8 @@ std::mutex nds_mutex;
 std::mutex status_mutex;
 std::mutex labs_mutex;
 std::mutex db_mutex;
+std::mutex shutdown_mutex;
+std::condition_variable shutdown_cv;
 
 std::map<std::string, double> nodeDataStorage;
 
@@ -110,7 +118,7 @@ std::map<std::string, std::string> statusStorage = {
 };
 std::vector<std::string> labsStorage;
 
-bool m_runThread = false;
+std::atomic<bool> m_runThread{false};
 int64_t lastTick = 0;
 
 const string sysPrefix = "[SYS]";
@@ -120,6 +128,97 @@ const string loadPrefix = "LOAD_STATE:";
 const string loadPatientPrefix = "LOAD_PATIENT:";
 
 void SendReset();
+
+std::string urlDecode(const std::string &str)
+{
+    std::string decoded;
+    decoded.reserve(str.size());
+    for (std::size_t i = 0; i < str.size(); ++i)
+    {
+        if (str[i] == '%' && i + 2 < str.size() &&
+            std::isxdigit(static_cast<unsigned char>(str[i + 1])) &&
+            std::isxdigit(static_cast<unsigned char>(str[i + 2])))
+        {
+            int val = std::stoi(str.substr(i + 1, 2), nullptr, 16);
+            decoded.push_back(static_cast<char>(val));
+            i += 2;
+        }
+        else if (str[i] == '+')
+        {
+            decoded.push_back(' ');
+        }
+        else
+        {
+            decoded.push_back(str[i]);
+        }
+    }
+    return decoded;
+}
+
+bool isValidFilename(const std::string &name)
+{
+    if (name.empty() || name == "." || name == ".." ||
+        name.find('/') != std::string::npos ||
+        name.find('\\') != std::string::npos ||
+        name.find("..") != std::string::npos ||
+        name.find('\0') != std::string::npos)
+    {
+        return false;
+    }
+    return path(name).filename().string() == name;
+}
+
+std::string escapeCsvField(const std::string &field)
+{
+    if (field.find_first_of(",\"\r\n") == std::string::npos)
+    {
+        return field;
+    }
+    std::string escaped = "\"";
+    for (char c : field)
+    {
+        if (c == '"')
+        {
+            escaped += "\"\"";
+        }
+        else
+        {
+            escaped.push_back(c);
+        }
+    }
+    escaped += "\"";
+    return escaped;
+}
+
+std::string formatTimestampCsv(int64_t timestamp)
+{
+    std::time_t temp = (timestamp > 10000000000LL) ? (timestamp / 1000) : timestamp;
+    std::tm tm_buf{};
+#if defined(_WIN32)
+    bool ok = (gmtime_s(&tm_buf, &temp) == 0);
+#else
+    bool ok = (gmtime_r(&temp, &tm_buf) != nullptr);
+#endif
+    std::ostringstream oss;
+    if (ok)
+    {
+        oss << std::put_time(&tm_buf, "%Y-%m-%d %I:%M:%S %p");
+    }
+    else
+    {
+        oss << timestamp;
+    }
+    return oss.str();
+}
+
+std::string getJsonString(const Document &doc, const char *key)
+{
+    if (doc.HasMember(key) && doc[key].IsString())
+    {
+        return doc[key].GetString();
+    }
+    return {};
+}
 
 /// Resets database tables for labs.
 void ResetLabs()
@@ -222,107 +321,110 @@ void AppendLabRow()
         nodeSnapshot = nodeDataStorage;
     }
 
-    labRow << nodeSnapshot["SIM_TIME"] << ",";
+    auto getVal = [&nodeSnapshot](const std::string &key) -> double
+    {
+        auto it = nodeSnapshot.find(key);
+        return (it != nodeSnapshot.end()) ? it->second : 0.0;
+    };
+
+    auto simTimeIt = nodeSnapshot.find("SIM_TIME");
+    if (simTimeIt != nodeSnapshot.end())
+    {
+        labRow << simTimeIt->second << ",";
+    }
+    else
+    {
+        std::string fallbackTime;
+        {
+            const std::lock_guard<std::mutex> lock(status_mutex);
+            fallbackTime = statusStorage["TIME"];
+        }
+        labRow << (fallbackTime.empty() ? "0" : fallbackTime) << ",";
+    }
 
     // POCT
     labRow << "POCT,";
-    labRow << nodeSnapshot["Substance_Sodium"] << ",";
-    labRow << nodeSnapshot["MetabolicPanel_Potassium"] << ",";
-    labRow << nodeSnapshot["MetabolicPanel_Chloride"] << ",";
-    labRow << nodeSnapshot["MetabolicPanel_CarbonDioxide"] << ",";
+    labRow << getVal("Substance_Sodium") << ",";
+    labRow << getVal("MetabolicPanel_Potassium") << ",";
+    labRow << getVal("MetabolicPanel_Chloride") << ",";
+    labRow << getVal("MetabolicPanel_CarbonDioxide") << ",";
     labRow << ","; // Anion Gap
     labRow << ","; // Ionized Calcium (iCa)
-    labRow << nodeSnapshot["Substance_Glucose_Concentration"] << ",";
-    labRow << nodeSnapshot["BloodChemistry_BloodUreaNitrogen_Concentration"] << ",";
-    labRow << nodeSnapshot["Substance_Creatinine_Concentration"] << ",";
+    labRow << getVal("Substance_Glucose_Concentration") << ",";
+    labRow << getVal("BloodChemistry_BloodUreaNitrogen_Concentration") << ",";
+    labRow << getVal("Substance_Creatinine_Concentration") << ",";
 
     // Hematology
     labRow << "Hematology,";
-    labRow << nodeSnapshot["BloodChemistry_Hemaocrit"] << ",";
-    labRow << nodeSnapshot["Substance_Hemoglobin_Concentration"] << ",";
+    labRow << getVal("BloodChemistry_Hemaocrit") << ",";
+    labRow << getVal("Substance_Hemoglobin_Concentration") << ",";
 
     // ABG
     labRow << "ABG,";
-    labRow << nodeSnapshot["Substance_Lactate_Concentration_mmol"] << ",";
-    labRow << nodeSnapshot["BloodChemistry_BloodPH"] << ",";
-    labRow << nodeSnapshot["BloodChemistry_BloodPH_MOD"] << ",";
-    labRow << nodeSnapshot["BloodChemistry_Arterial_CarbonDioxide_Pressure"] << ",";
-    labRow << nodeSnapshot["BloodChemistry_Arterial_Oxygen_Pressure"] << ",";
-    labRow << nodeSnapshot["MetabolicPanel_CarbonDioxide"] << ",";
-    labRow << nodeSnapshot["Substance_Bicarbonate"] << ",";
-    labRow << nodeSnapshot["Substance_BaseExcess"] << ",";
-    labRow << nodeSnapshot["BloodChemistry_Oxygen_Saturation"] << ",";
-    labRow << nodeSnapshot["Substance_Carboxyhemoglobin_Concentration"] << ",";
+    labRow << getVal("Substance_Lactate_Concentration_mmol") << ",";
+    labRow << getVal("BloodChemistry_BloodPH") << ",";
+    labRow << getVal("BloodChemistry_BloodPH_MOD") << ",";
+    labRow << getVal("BloodChemistry_Arterial_CarbonDioxide_Pressure") << ",";
+    labRow << getVal("BloodChemistry_Arterial_Oxygen_Pressure") << ",";
+    labRow << getVal("MetabolicPanel_CarbonDioxide") << ",";
+    labRow << getVal("Substance_Bicarbonate") << ",";
+    labRow << getVal("Substance_BaseExcess") << ",";
+    labRow << getVal("BloodChemistry_Oxygen_Saturation") << ",";
+    labRow << getVal("Substance_Carboxyhemoglobin_Concentration") << ",";
 
     // VBG
     labRow << "VBG,";
-    labRow << nodeSnapshot["Substance_Lactate_Concentration_mmol"] << ",";
-    labRow << nodeSnapshot["BloodChemistry_BloodPH"] << ",";
-    labRow << nodeSnapshot["BloodChemistry_VenousCarbonDioxidePressure"] << ",";
-    labRow << nodeSnapshot["MetabolicPanel_CarbonDioxide"] << ",";
-    labRow << nodeSnapshot["Substance_Bicarbonate"] << ",";
-    labRow << nodeSnapshot["Substance_BaseExcess"] << ",";
-    labRow << nodeSnapshot["Substance_Carboxyhemoglobin_Concentration"] << ",";
+    labRow << getVal("Substance_Lactate_Concentration_mmol") << ",";
+    labRow << getVal("BloodChemistry_BloodPH") << ",";
+    labRow << getVal("BloodChemistry_VenousCarbonDioxidePressure") << ",";
+    labRow << getVal("MetabolicPanel_CarbonDioxide") << ",";
+    labRow << getVal("Substance_Bicarbonate") << ",";
+    labRow << getVal("Substance_BaseExcess") << ",";
+    labRow << getVal("Substance_Carboxyhemoglobin_Concentration") << ",";
 
     // BMP
     labRow << "BMP,";
-    labRow << nodeSnapshot["Substance_Sodium"] << ",";
-    labRow << nodeSnapshot["MetabolicPanel_Potassium"] << ",";
-    labRow << nodeSnapshot["MetabolicPanel_Chloride"] << ",";
-    labRow << nodeSnapshot["MetabolicPanel_CarbonDioxide"] << ",";
+    labRow << getVal("Substance_Sodium") << ",";
+    labRow << getVal("MetabolicPanel_Potassium") << ",";
+    labRow << getVal("MetabolicPanel_Chloride") << ",";
+    labRow << getVal("MetabolicPanel_CarbonDioxide") << ",";
     labRow << ","; // Anion Gap
     labRow << ","; // Ionized Calcium (iCa)
-    labRow << nodeSnapshot["Substance_Glucose_Concentration"] << ",";
-    labRow << nodeSnapshot["BloodChemistry_BloodUreaNitrogen_Concentration"] << ",";
-    labRow << nodeSnapshot["Substance_Creatinine_Concentration"] << ",";
+    labRow << getVal("Substance_Glucose_Concentration") << ",";
+    labRow << getVal("BloodChemistry_BloodUreaNitrogen_Concentration") << ",";
+    labRow << getVal("Substance_Creatinine_Concentration") << ",";
 
     // CBC
     labRow << "CBC,";
-    labRow << nodeSnapshot["BloodChemistry_WhiteBloodCell_Count"] << ",";
-    labRow << nodeSnapshot["BloodChemistry_RedBloodCell_Count"] << ",";
-    labRow << nodeSnapshot["Substance_Hemoglobin_Concentration"] << ",";
-    labRow << nodeSnapshot["BloodChemistry_Hemaocrit"] << ",";
-    labRow << nodeSnapshot["CompleteBloodCount_Platelet"] << ",";
+    labRow << getVal("BloodChemistry_WhiteBloodCell_Count") << ",";
+    labRow << getVal("BloodChemistry_RedBloodCell_Count") << ",";
+    labRow << getVal("Substance_Hemoglobin_Concentration") << ",";
+    labRow << getVal("BloodChemistry_Hemaocrit") << ",";
+    labRow << getVal("CompleteBloodCount_Platelet") << ",";
 
     // CMP
     labRow << "CMP,";
-    labRow << nodeSnapshot["Substance_Albumin_Concentration"] << ",";
+    labRow << getVal("Substance_Albumin_Concentration") << ",";
     labRow << ","; // ALP
     labRow << ","; // ALT
     labRow << ","; // AST
-    labRow << nodeSnapshot["BloodChemistry_BloodUreaNitrogen_Concentration"] << ",";
-    labRow << nodeSnapshot["Substance_Calcium_Concentration"] << ",";
-    labRow << nodeSnapshot["MetabolicPanel_Chloride"] << ",";
-    labRow << nodeSnapshot["MetabolicPanel_CarbonDioxide"] << ",";
-    labRow << nodeSnapshot["Substance_Creatinine_Concentration"] << ",";
-    labRow << nodeSnapshot["Substance_Creatinine_Concentration"] << ",";
-    labRow << nodeSnapshot["Substance_Glucose_Concentration"] << ",";
-    labRow << nodeSnapshot["MetabolicPanel_Potassium"] << ",";
-    labRow << nodeSnapshot["Substance_Sodium"] << ",";
-    labRow << nodeSnapshot["MetabolicPanel_Bilirubin"] << ",";
-    labRow << nodeSnapshot["MetabolicPanel_Protein"];
+    labRow << getVal("BloodChemistry_BloodUreaNitrogen_Concentration") << ",";
+    labRow << getVal("Substance_Calcium_Concentration") << ",";
+    labRow << getVal("MetabolicPanel_Chloride") << ",";
+    labRow << getVal("MetabolicPanel_CarbonDioxide") << ",";
+    labRow << getVal("Substance_Creatinine_Concentration") << ",";
+    labRow << getVal("Substance_Creatinine_Concentration") << ",";
+    labRow << getVal("Substance_Glucose_Concentration") << ",";
+    labRow << getVal("MetabolicPanel_Potassium") << ",";
+    labRow << getVal("Substance_Sodium") << ",";
+    labRow << getVal("MetabolicPanel_Bilirubin") << ",";
+    labRow << getVal("MetabolicPanel_Protein");
 
     {
         const std::lock_guard<std::mutex> lock(labs_mutex);
         labsStorage.push_back(labRow.str());
     }
 }
-
-std::string ExtractTypeFromRenderMod(std::string payload)
-{
-    std::size_t pos = payload.find("type=");
-    if (pos != std::string::npos)
-    {
-        std::string p1 = payload.substr(pos + 6);
-        std::size_t pos2 = p1.find("\"");
-        if (pos2 != std::string::npos)
-        {
-            std::string p2 = p1.substr(0, pos2);
-            return p2;
-        }
-    }
-    return {};
-};
 
 std::string ExtractManikinIDFromString(std::string in)
 {
@@ -496,6 +598,7 @@ public:
                 statusStorage["STATUS"] = "NOT RUNNING";
                 statusStorage["TICK"] = "0";
                 statusStorage["TIME"] = "0";
+                lastTick = 0;
             }
             {
                 const std::lock_guard<std::mutex> lock(nds_mutex);
@@ -536,6 +639,7 @@ public:
                     statusStorage["STATUS"] = "NOT RUNNING";
                     statusStorage["TICK"] = "0";
                     statusStorage["TIME"] = "0";
+                    lastTick = 0;
                 }
                 {
                     const std::lock_guard<std::mutex> lock(nds_mutex);
@@ -550,6 +654,7 @@ public:
                     statusStorage["STATUS"] = "STOPPED";
                     statusStorage["TICK"] = "0";
                     statusStorage["TIME"] = "0";
+                    lastTick = 0;
                 }
                 {
                     const std::lock_guard<std::mutex> lock(nds_mutex);
@@ -729,9 +834,17 @@ AMM::UUID SendEventRecord(
     AMM::UUID eventUUID;
     eventUUID.id(mgr->GenerateUuidString());
 
+    auto ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    er.timestamp(ms);
     er.type(type);
     er.location(fmaL);
     er.id(eventUUID);
+    if (!practitioner.empty())
+    {
+        AMM::UUID agentId;
+        agentId.id(practitioner);
+        er.agent_id(agentId);
+    }
     mgr->WriteEventRecord(er);
     return eventUUID;
 }
@@ -780,7 +893,32 @@ void SendPerformanceAssessment(
     instUUID.id(mgr->GenerateUuidString());
     assessInstance.id(instUUID);
     assessInstance.event_id(er_id);
-    assessInstance.comment(comment);
+    if (assessment_type == "SUCCESS")
+    {
+        assessInstance.value(AMM::AssessmentValue::SUCCESS);
+    }
+    else if (assessment_type == "COMMISSION_ERROR")
+    {
+        assessInstance.value(AMM::AssessmentValue::COMMISSION_ERROR);
+    }
+    else if (assessment_type == "EXECUTION_ERROR")
+    {
+        assessInstance.value(AMM::AssessmentValue::EXECUTION_ERROR);
+    }
+    else if (assessment_type == "OMISSION_ERROR")
+    {
+        assessInstance.value(AMM::AssessmentValue::OMISSION_ERROR);
+    }
+    std::string fullComment = comment;
+    if (!step.empty())
+    {
+        fullComment = fullComment.empty() ? ("step=" + step) : (fullComment + " [step=" + step + "]");
+    }
+    if (!assessment_info.empty())
+    {
+        fullComment = fullComment.empty() ? assessment_info : (fullComment + " (" + assessment_info + ")");
+    }
+    assessInstance.comment(fullComment);
     mgr->WriteAssessment(assessInstance);
 }
 
@@ -833,6 +971,7 @@ void SendCommand(const std::string &command)
                 statusStorage["STATUS"] = "NOT RUNNING";
                 statusStorage["TICK"] = "0";
                 statusStorage["TIME"] = "0";
+                lastTick = 0;
             }
             {
                 const std::lock_guard<std::mutex> lock(nds_mutex);
@@ -929,7 +1068,8 @@ public:
     {
         auto opts = Http::Endpoint::options()
                         .threads(thr)
-                        .flags(Tcp::Options::ReuseAddr);
+                        .flags(Tcp::Options::ReuseAddr)
+                        .maxRequestSize(DefaultMaxPayload);
         httpEndpoint->init(opts);
         setupRoutes();
     }
@@ -1067,20 +1207,18 @@ private:
 
     void getStates(const Rest::Request &request, Http::ResponseWriter response)
     {
-
         StringBuffer s;
         Writer<StringBuffer> writer(s);
 
         writer.StartArray();
         if (exists(state_path) && is_directory(state_path))
         {
-            path p(state_path);
-            if (is_directory(p))
+            std::vector<boost::filesystem::path> paths(
+                boost::filesystem::directory_iterator{state_path}, boost::filesystem::directory_iterator{});
+            std::sort(paths.begin(), paths.end());
+            for (auto const &path : paths)
             {
-                std::vector<boost::filesystem::path> paths(
-                    boost::filesystem::directory_iterator{state_path}, boost::filesystem::directory_iterator{});
-                std::sort(paths.begin(), paths.end());
-                for (auto const &path : paths)
+                if (is_regular_file(path))
                 {
                     writer.StartObject();
                     writer.Key("name");
@@ -1102,13 +1240,20 @@ private:
     void deleteState(const Rest::Request &request,
                      Http::ResponseWriter response)
     {
-        auto name = request.param(":name").as<std::string>();
+        auto name = urlDecode(request.param(":name").as<std::string>());
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+
+        if (!isValidFilename(name))
+        {
+            LOG_WARNING << "Rejected invalid state filename request: " << name;
+            response.send(Pistache::Http::Code::Bad_Request,
+                          "Invalid state filename", MIME(Application, Json));
+            return;
+        }
+
         if (name != "StandardMale@0s.xml")
         {
-            std::ostringstream deleteFile;
-            deleteFile << state_path << "/" << name;
-            path deletePath(deleteFile.str().c_str());
+            path deletePath = path(state_path) / path(name).filename();
             if (exists(deletePath) && is_regular_file(deletePath))
             {
                 LOG_INFO << "Deleting " << deletePath;
@@ -1139,29 +1284,25 @@ private:
         writer.StartArray();
         if (exists(scenario_path) && is_directory(scenario_path))
         {
-            path p(scenario_path);
-            if (is_directory(p))
-            {
-                // Create a vector to hold all paths for sorting
-                std::vector<boost::filesystem::path> paths(
-                    boost::filesystem::directory_iterator{scenario_path}, boost::filesystem::directory_iterator{});
-                // Sort the paths alphabetically
-                std::sort(paths.begin(), paths.end());
+            // Create a vector to hold all paths for sorting
+            std::vector<boost::filesystem::path> paths(
+                boost::filesystem::directory_iterator{scenario_path}, boost::filesystem::directory_iterator{});
+            // Sort the paths alphabetically
+            std::sort(paths.begin(), paths.end());
 
-                // Now iterate through the sorted paths
-                for (auto const &path : paths)
+            // Now iterate through the sorted paths
+            for (auto const &path : paths)
+            {
+                if (is_regular_file(path))
                 {
-                    if (is_regular_file(path))
-                    {
-                        writer.StartObject();
-                        writer.Key("name");
-                        writer.String(path.filename().c_str());
-                        writer.Key("last_updated");
-                        stringstream writeTime;
-                        writeTime << last_write_time(path);
-                        writer.String(writeTime.str().c_str());
-                        writer.EndObject();
-                    }
+                    writer.StartObject();
+                    writer.Key("name");
+                    writer.String(path.filename().c_str());
+                    writer.Key("last_updated");
+                    stringstream writeTime;
+                    writeTime << last_write_time(path);
+                    writer.String(writeTime.str().c_str());
+                    writer.EndObject();
                 }
             }
         }
@@ -1175,15 +1316,10 @@ private:
     void getScenario(const Rest::Request &request,
                      Http::ResponseWriter response)
     {
-        std::string name = request.param(":name").as<std::string>();
+        std::string name = urlDecode(request.param(":name").as<std::string>());
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
 
-        if (name.empty() || name == "." || name == ".." ||
-            name.find('/') != std::string::npos ||
-            name.find('\\') != std::string::npos ||
-            name.find("..") != std::string::npos ||
-            name.find('\0') != std::string::npos ||
-            path(name).filename().string() != name)
+        if (!isValidFilename(name))
         {
             LOG_WARNING << "Rejected invalid scenario filename request: " << name;
             response.send(Pistache::Http::Code::Bad_Request, "Invalid scenario filename");
@@ -1219,23 +1355,21 @@ private:
         writer.StartArray();
         if (exists(patient_path) && is_directory(patient_path))
         {
-            path p(patient_path);
-            if (is_directory(p))
+            std::vector<boost::filesystem::path> paths(
+                boost::filesystem::directory_iterator{patient_path}, boost::filesystem::directory_iterator{});
+            std::sort(paths.begin(), paths.end());
+            for (auto const &path : paths)
             {
-                directory_iterator end_iter;
-                for (directory_iterator dir_itr(p); dir_itr != end_iter; ++dir_itr)
+                if (is_regular_file(path))
                 {
-                    if (is_regular_file(dir_itr->status()))
-                    {
-                        writer.StartObject();
-                        writer.Key("name");
-                        writer.String(dir_itr->path().filename().c_str());
-                        writer.Key("description");
-                        stringstream writeTime;
-                        writeTime << last_write_time(dir_itr->path());
-                        writer.String(writeTime.str().c_str());
-                        writer.EndObject();
-                    }
+                    writer.StartObject();
+                    writer.Key("name");
+                    writer.String(path.filename().c_str());
+                    writer.Key("description");
+                    stringstream writeTime;
+                    writeTime << last_write_time(path);
+                    writer.String(writeTime.str().c_str());
+                    writer.EndObject();
                 }
             }
         }
@@ -1249,24 +1383,55 @@ private:
     void getAssessments(const Rest::Request &request, Http::ResponseWriter response)
     {
         LOG_INFO << "Get a list of all assessment CSVs";
+        StringBuffer s;
+        Writer<StringBuffer> writer(s);
+
+        writer.StartArray();
+        if (exists(assessment_path) && is_directory(assessment_path))
+        {
+            std::vector<boost::filesystem::path> paths(
+                boost::filesystem::directory_iterator{assessment_path}, boost::filesystem::directory_iterator{});
+            std::sort(paths.begin(), paths.end());
+            for (auto const &p : paths)
+            {
+                if (is_regular_file(p))
+                {
+                    writer.StartObject();
+                    writer.Key("name");
+                    writer.String(p.filename().c_str());
+                    writer.Key("last_updated");
+                    stringstream writeTime;
+                    writeTime << last_write_time(p);
+                    writer.String(writeTime.str().c_str());
+                    writer.EndObject();
+                }
+            }
+        }
+        writer.EndArray();
+
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+        response.send(Pistache::Http::Code::Ok, s.GetString(), MIME(Application, Json));
     }
 
     int writeToFile(const string &filename, const string &data)
     {
-        std::fstream out;
-
-        out.open(filename, std::fstream::in | std::fstream::out | std::fstream::trunc);
-
-        LOG_INFO << "Writing to " << filename;
-
-        // If file does not exist, Create new file
-        if (!out)
+        try
         {
-            LOG_WARNING << "Cannot open file, file does not exist. Creating new file.";
-            out.open(filename);
+            path filePath(filename);
+            if (filePath.has_parent_path() && !exists(filePath.parent_path()))
+            {
+                create_directories(filePath.parent_path());
+            }
+        }
+        catch (const filesystem_error &e)
+        {
+            LOG_ERROR << "Failed to create parent directory for " << filename << ": " << e.what();
+            return -1;
         }
 
-        if (out.fail())
+        LOG_INFO << "Writing to " << filename;
+        std::ofstream out(filename, std::ios::out | std::ios::trunc);
+        if (!out.is_open() || out.fail())
         {
             LOG_ERROR << "Open failure: " << strerror(errno);
             return -1;
@@ -1275,6 +1440,12 @@ private:
         out << data;
         out.close();
 
+        if (out.fail())
+        {
+            LOG_ERROR << "Write failure: " << strerror(errno);
+            return -1;
+        }
+
         LOG_INFO << "All done";
         return 0;
     }
@@ -1282,19 +1453,34 @@ private:
     void createAssessment(const Rest::Request &request,
                           Http::ResponseWriter response)
     {
-        auto name = request.param(":name").as<std::string>();
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+        auto name = urlDecode(request.param(":name").as<std::string>());
         if (name.empty())
         {
             LOG_INFO << "Name was empty";
             name = "test.csv";
         }
 
-        std::string filename = "assessments/" + name;
-        LOG_INFO << "Create an assessment from a POST.  Filename is " << filename;
+        if (!isValidFilename(name))
+        {
+            LOG_WARNING << "Rejected invalid assessment filename request: " << name;
+            response.send(Pistache::Http::Code::Bad_Request, "Invalid assessment filename");
+            return;
+        }
+
+        path assessmentFile = path(assessment_path) / path(name).filename();
+        LOG_INFO << "Create an assessment from a POST.  Filename is " << assessmentFile.string();
         auto s = std::chrono::steady_clock::now();
-        writeToFile(filename, request.body());
+        int rc = writeToFile(assessmentFile.string(), request.body());
         auto dt = std::chrono::steady_clock::now() - s;
-        LOG_INFO << "File upload processed in: " << std::chrono::duration_cast<std::chrono::microseconds>(dt).count() << endl;
+        LOG_INFO << "File upload processed in: " << std::chrono::duration_cast<std::chrono::microseconds>(dt).count();
+
+        if (rc != 0)
+        {
+            response.send(Http::Code::Internal_Server_Error, "Failed to write assessment file");
+            return;
+        }
+
         response.send(Http::Code::Ok);
 
         LOG_INFO << "Sending out system message that there's an assessment available.";
@@ -1307,15 +1493,50 @@ private:
     void deleteAssessment(const Rest::Request &request,
                           Http::ResponseWriter response)
     {
-        auto name = request.param(":name").as<std::string>();
+        auto name = urlDecode(request.param(":name").as<std::string>());
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+
+        if (!isValidFilename(name))
+        {
+            LOG_WARNING << "Rejected invalid assessment filename request: " << name;
+            response.send(Pistache::Http::Code::Bad_Request, "Invalid assessment filename");
+            return;
+        }
+
+        path deletePath = path(assessment_path) / path(name).filename();
+        if (exists(deletePath) && is_regular_file(deletePath))
+        {
+            LOG_INFO << "Deleting assessment " << deletePath;
+            boost::filesystem::remove(deletePath);
+            response.send(Pistache::Http::Code::Ok, "Deleted", MIME(Application, Json));
+        }
+        else
+        {
+            response.send(Pistache::Http::Code::Not_Found, "Assessment file does not exist");
+        }
     }
 
     void getAssessment(const Rest::Request &request, Http::ResponseWriter response)
     {
-        std::string name = request.param(":name").as<std::string>();
-        std::string fileName = "assessments/" + name;
-        LOG_INFO << "Recieved a request to GET an assessment file, so we're serving this up: " << fileName;
-        Http::serveFile(response, fileName.c_str());
+        std::string name = urlDecode(request.param(":name").as<std::string>());
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+
+        if (!isValidFilename(name))
+        {
+            LOG_WARNING << "Rejected invalid assessment filename request: " << name;
+            response.send(Pistache::Http::Code::Bad_Request, "Invalid assessment filename");
+            return;
+        }
+
+        path assessmentFile = path(assessment_path) / path(name).filename();
+        if (!exists(assessmentFile) || !is_regular_file(assessmentFile))
+        {
+            response.send(Pistache::Http::Code::Not_Found, "Assessment file does not exist");
+            return;
+        }
+
+        LOG_INFO << "Received a request to GET an assessment file, so we're serving this up: " << assessmentFile.string();
+        Http::serveFile(response, assessmentFile.string().c_str());
     }
 
     void getActions(const Rest::Request &request, Http::ResponseWriter response)
@@ -1326,23 +1547,21 @@ private:
         writer.StartArray();
         if (exists(action_path) && is_directory(action_path))
         {
-            path p(action_path);
-            if (is_directory(p))
+            std::vector<boost::filesystem::path> paths(
+                boost::filesystem::directory_iterator{action_path}, boost::filesystem::directory_iterator{});
+            std::sort(paths.begin(), paths.end());
+            for (auto const &p : paths)
             {
-                directory_iterator end_iter;
-                for (directory_iterator dir_itr(p); dir_itr != end_iter; ++dir_itr)
+                if (is_regular_file(p))
                 {
-                    if (is_regular_file(dir_itr->status()))
-                    {
-                        writer.StartObject();
-                        writer.Key("name");
-                        writer.String(dir_itr->path().filename().c_str());
-                        writer.Key("description");
-                        stringstream writeTime;
-                        writeTime << last_write_time(dir_itr->path());
-                        writer.String(writeTime.str().c_str());
-                        writer.EndObject();
-                    }
+                    writer.StartObject();
+                    writer.Key("name");
+                    writer.String(p.filename().c_str());
+                    writer.Key("description");
+                    stringstream writeTime;
+                    writeTime << last_write_time(p);
+                    writer.String(writeTime.str().c_str());
+                    writer.EndObject();
                 }
             }
         }
@@ -1356,157 +1575,134 @@ private:
     void executeCommand(const Rest::Request &request,
                         Http::ResponseWriter response)
     {
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+        response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
         try {
             Document document;
             document.Parse(request.body().c_str());
-            if (document.HasParseError() || !document.HasMember("payload")) {
+            if (document.HasParseError() || !document.IsObject() ||
+                !document.HasMember("payload") || !document["payload"].IsString()) {
                 response.send(Pistache::Http::Code::Bad_Request,
-                             "{\"error\":\"Invalid JSON or missing payload\"}");
+                             "{\"error\":\"Invalid JSON or missing string payload\"}",
+                             MIME(Application, Json));
                 return;
             }
             std::string payload = document["payload"].GetString();
 
             SendCommand(payload);
 
-            response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
-            response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
             response.send(Pistache::Http::Code::Ok,
-                          "{\"message\":\"Command executed\"}");
+                          "{\"message\":\"Command executed\"}",
+                          MIME(Application, Json));
         } catch (const std::exception& e) {
             LOG_ERROR << "JSON parsing error in executeCommand: " << e.what();
             response.send(Pistache::Http::Code::Bad_Request,
-                         "{\"error\":\"JSON parsing failed\"}");
+                         "{\"error\":\"JSON parsing failed\"}",
+                         MIME(Application, Json));
         }
     }
 
     void executePhysiologyModification(const Rest::Request &request,
                                        Http::ResponseWriter response)
     {
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+        response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
         try {
-            std::string type, location, practitioner, payload;
             Document document;
             document.Parse(request.body().c_str());
-            if (document.HasParseError()) {
+            if (document.HasParseError() || !document.IsObject()) {
                 response.send(Pistache::Http::Code::Bad_Request,
-                             "{\"error\":\"Invalid JSON\"}");
+                             "{\"error\":\"Invalid JSON\"}",
+                             MIME(Application, Json));
                 return;
             }
-            if (document.HasMember("type"))
-            {
-                type = document["type"].GetString();
-            }
-            if (document.HasMember("location"))
-            {
-                location = document["location"].GetString();
-            }
-            if (document.HasMember("practitioner"))
-            {
-                practitioner = document["practitioner"].GetString();
-            }
-            if (document.HasMember("payload"))
-            {
-                payload = document["payload"].GetString();
-            }
+            std::string type = getJsonString(document, "type");
+            std::string location = getJsonString(document, "location");
+            std::string practitioner = getJsonString(document, "practitioner");
+            std::string payload = getJsonString(document, "payload");
+
             AMM::UUID erID = SendEventRecord(location, practitioner, type);
             SendPhysiologyModification(erID, type, payload);
-            response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
-            response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
             response.send(Pistache::Http::Code::Ok,
-                          "{\"message\":\"Physiology modification published\"}");
+                          "{\"message\":\"Physiology modification published\"}",
+                          MIME(Application, Json));
         } catch (const std::exception& e) {
             LOG_ERROR << "JSON parsing error in executePhysiologyModification: " << e.what();
             response.send(Pistache::Http::Code::Bad_Request,
-                         "{\"error\":\"JSON parsing failed\"}");
+                         "{\"error\":\"JSON parsing failed\"}",
+                         MIME(Application, Json));
         }
     }
 
     void executeRenderModification(const Rest::Request &request,
                                    Http::ResponseWriter response)
     {
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+        response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
         try {
-            std::string type, location, practitioner, payload;
             Document document;
             document.Parse(request.body().c_str());
-            if (document.HasParseError()) {
+            if (document.HasParseError() || !document.IsObject()) {
                 response.send(Pistache::Http::Code::Bad_Request,
-                             "{\"error\":\"Invalid JSON\"}");
+                             "{\"error\":\"Invalid JSON\"}",
+                             MIME(Application, Json));
                 return;
             }
-            if (document.HasMember("type"))
-            {
-                type = document["type"].GetString();
-            }
-            if (document.HasMember("location"))
-            {
-                location = document["location"].GetString();
-            }
-            if (document.HasMember("practitioner"))
-            {
-                practitioner = document["practitioner"].GetString();
-            }
-            if (document.HasMember("payload"))
-            {
-                payload = document["payload"].GetString();
-            }
+            std::string type = getJsonString(document, "type");
+            std::string location = getJsonString(document, "location");
+            std::string practitioner = getJsonString(document, "practitioner");
+            std::string payload = getJsonString(document, "payload");
+
             AMM::UUID erID = SendEventRecord(location, practitioner, type);
             SendRenderModification(erID, type, payload);
-            response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
-            response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
             response.send(Pistache::Http::Code::Ok,
-                          "{\"message\":\"Render modification published\"}");
+                          "{\"message\":\"Render modification published\"}",
+                          MIME(Application, Json));
         } catch (const std::exception& e) {
             LOG_ERROR << "JSON parsing error in executeRenderModification: " << e.what();
             response.send(Pistache::Http::Code::Bad_Request,
-                         "{\"error\":\"JSON parsing failed\"}");
+                         "{\"error\":\"JSON parsing failed\"}",
+                         MIME(Application, Json));
         }
     }
 
     void executePerformanceAssessment(const Rest::Request &request,
                                       Http::ResponseWriter response)
     {
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+        response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
         try {
-            std::string type, location, practitioner, payload, info, step, comment;
             Document document;
             document.Parse(request.body().c_str());
-            if (document.HasParseError()) {
+            if (document.HasParseError() || !document.IsObject()) {
                 response.send(Pistache::Http::Code::Bad_Request,
-                             "{\"error\":\"Invalid JSON\"}");
+                             "{\"error\":\"Invalid JSON\"}",
+                             MIME(Application, Json));
                 return;
             }
-            if (document.HasMember("type"))
-            {
-                type = document["type"].GetString();
+            std::string type = getJsonString(document, "type");
+            if (type.empty()) {
+                type = getJsonString(document, "assessment_type");
             }
-            if (document.HasMember("location"))
-            {
-                location = document["location"].GetString();
+            std::string location = getJsonString(document, "location");
+            std::string practitioner = getJsonString(document, "practitioner");
+            std::string info = getJsonString(document, "info");
+            if (info.empty()) {
+                info = getJsonString(document, "assessment_info");
             }
-            if (document.HasMember("practitioner"))
-            {
-                practitioner = document["practitioner"].GetString();
-            }
-            if (document.HasMember("info"))
-            {
-                info = document["info"].GetString();
-            }
-            if (document.HasMember("step"))
-            {
-                step = document["step"].GetString();
-            }
-            if (document.HasMember("comment"))
-            {
-                comment = document["comment"].GetString();
-            }
+            std::string step = getJsonString(document, "step");
+            std::string comment = getJsonString(document, "comment");
+
             AMM::UUID erID = SendEventRecord(location, practitioner, type);
             SendPerformanceAssessment(erID, type, info, step, comment);
-            response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
-            response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
             response.send(Pistache::Http::Code::Ok,
-                          "{\"message\":\"Performance assessment published\"}");
+                          "{\"message\":\"Performance assessment published\"}",
+                          MIME(Application, Json));
         } catch (const std::exception& e) {
             LOG_ERROR << "JSON parsing error in executePerformanceAssessment: " << e.what();
             response.send(Pistache::Http::Code::Bad_Request,
-                         "{\"error\":\"JSON parsing failed\"}");
+                         "{\"error\":\"JSON parsing failed\"}",
+                         MIME(Application, Json));
         }
     }
 
@@ -1515,33 +1711,88 @@ private:
     {
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         response.headers().add<Http::Header::AccessControlAllowHeaders>("*");
-        response.send(Pistache::Http::Code::Ok, "{\"message\":\"success\"}");
+        response.send(Pistache::Http::Code::Ok, "{\"message\":\"success\"}", MIME(Application, Json));
     }
 
     void createAction(const Rest::Request &request,
-                      Http::ResponseWriter response) {}
+                      Http::ResponseWriter response)
+    {
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+        response.send(Pistache::Http::Code::Not_Implemented,
+                      "{\"error\":\"createAction not implemented\"}",
+                      MIME(Application, Json));
+    }
 
     void deleteAction(const Rest::Request &request,
                       Http::ResponseWriter response)
     {
-        auto name = request.param(":name").as<std::string>();
+        auto name = urlDecode(request.param(":name").as<std::string>());
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+
+        if (!isValidFilename(name))
+        {
+            response.send(Pistache::Http::Code::Bad_Request, "Invalid action filename");
+            return;
+        }
+
+        path deletePath = path(action_path) / path(name).filename();
+        if (exists(deletePath) && is_regular_file(deletePath))
+        {
+            LOG_INFO << "Deleting action " << deletePath;
+            boost::filesystem::remove(deletePath);
+            response.send(Pistache::Http::Code::Ok, "Deleted", MIME(Application, Json));
+        }
+        else
+        {
+            response.send(Pistache::Http::Code::Not_Found, "Action file does not exist");
+        }
     }
 
     void updateAction(const Rest::Request &request,
                       Http::ResponseWriter response)
     {
-        auto name = request.param(":name").as<std::string>();
+        auto name = urlDecode(request.param(":name").as<std::string>());
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+
+        if (!isValidFilename(name))
+        {
+            response.send(Pistache::Http::Code::Bad_Request, "Invalid action filename");
+            return;
+        }
+
+        path actionFile = path(action_path) / path(name).filename();
+        if (writeToFile(actionFile.string(), request.body()) != 0)
+        {
+            response.send(Pistache::Http::Code::Internal_Server_Error, "Failed to write action file");
+            return;
+        }
+        response.send(Pistache::Http::Code::Ok, "{\"message\":\"Action updated\"}", MIME(Application, Json));
     }
 
     void getAction(const Rest::Request &request, Http::ResponseWriter response)
     {
-        auto name = request.param(":name").as<std::string>();
+        auto name = urlDecode(request.param(":name").as<std::string>());
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+
+        if (!isValidFilename(name))
+        {
+            response.send(Pistache::Http::Code::Bad_Request, "Invalid action filename");
+            return;
+        }
+
+        path actionFile = path(action_path) / path(name).filename();
+        if (!exists(actionFile) || !is_regular_file(actionFile))
+        {
+            response.send(Pistache::Http::Code::Not_Found, "Action file does not exist");
+            return;
+        }
+        Http::serveFile(response, actionFile.string().c_str());
     }
 
     void issueCommand(const Rest::Request &request,
                       Http::ResponseWriter response)
     {
-        auto name = request.param(":name").as<std::string>();
+        auto name = urlDecode(request.param(":name").as<std::string>());
         SendCommand(name);
         StringBuffer s;
         Writer<StringBuffer> writer(s);
@@ -1550,7 +1801,7 @@ private:
         writer.String(name.c_str());
         writer.EndObject();
         response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
-        response.send(Http::Code::Ok, s.GetString());
+        response.send(Http::Code::Ok, s.GetString(), MIME(Application, Json));
     }
 
     void getModuleById(const Rest::Request &request,
@@ -1683,7 +1934,7 @@ private:
         {
             const std::lock_guard<std::mutex> lock(db_mutex);
             db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities" >> totalCount;
-            // db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities where module_name LIKE 'AMM_%'" >> coreCount;
+            db << "SELECT COUNT(DISTINCT module_name) FROM module_capabilities where module_name LIKE 'AMM_%'" >> coreCount;
         }
         catch (const std::exception &e)
         {
@@ -1857,15 +2108,11 @@ private:
                 [&](string module_name, string source, string topic, int64_t timestamp,
                     string data)
             {
-                std::time_t temp = (timestamp > 10000000000LL) ? (timestamp / 1000) : timestamp;
-                std::tm *t = std::gmtime(&temp);
-                if (t) {
-                    s << std::put_time(t, "%Y-%m-%d %I:%M:%S %p");
-                } else {
-                    s << timestamp;
-                }
-                s << "," << module_name << "," << source << "," << topic
-                  << "," << data << std::endl;
+                s << formatTimestampCsv(timestamp) << ","
+                  << escapeCsvField(module_name) << ","
+                  << escapeCsvField(source) << ","
+                  << escapeCsvField(topic) << ","
+                  << escapeCsvField(data) << "\n";
             };
         }
         catch (const std::exception &e)
@@ -1947,15 +2194,10 @@ private:
                 [&](string module_name, string module_guid, string module_id, string message, string log_level,
                     int64_t timestamp)
             {
-                std::time_t temp = (timestamp > 10000000000LL) ? (timestamp / 1000) : timestamp;
-                std::tm *t = std::gmtime(&temp);
-                if (t) {
-                    s << std::put_time(t, "%Y-%m-%d %I:%M:%S %p");
-                } else {
-                    s << timestamp;
-                }
-                s << "," << log_level << "," << module_name << "," << message
-                  << std::endl;
+                s << formatTimestampCsv(timestamp) << ","
+                  << escapeCsvField(log_level) << ","
+                  << escapeCsvField(module_name) << ","
+                  << escapeCsvField(message) << "\n";
             };
         }
         catch (const std::exception &e)
@@ -2016,7 +2258,8 @@ private:
 
     void getNode(const Rest::Request &request, Http::ResponseWriter response)
     {
-        auto name = request.param(":name").as<std::string>();
+        auto name = urlDecode(request.param(":name").as<std::string>());
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
 
         const std::lock_guard<std::mutex> lock(nds_mutex);
         auto it = nodeDataStorage.find(name);
@@ -2028,7 +2271,6 @@ private:
             writer.Key(it->first.c_str());
             writer.Double(it->second);
             writer.EndObject();
-            response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
             response.send(Http::Code::Ok, s.GetString(), MIME(Application, Json));
         }
         else
@@ -2041,23 +2283,29 @@ private:
     {
         printCookies(request);
         response.cookies().add(Http::Cookie("lang", "en-US"));
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         response.send(Http::Code::Ok);
     }
 
     void doShutdown(const Rest::Request &request, Http::ResponseWriter response)
     {
         m_runThread = false;
+        shutdown_cv.notify_all();
         response.cookies().add(Http::Cookie("lang", "en-US"));
+        response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
         response.send(Http::Code::Ok);
     }
-
-    typedef std::mutex Lock;
-    typedef std::lock_guard<Lock> Guard;
-    Lock commandLock;
 
     std::shared_ptr<Http::Endpoint> httpEndpoint;
     Rest::Router router;
 };
+
+static void handleSignal(int signum)
+{
+    LOG_INFO << "Received signal " << signum << ", initiating shutdown.";
+    m_runThread = false;
+    shutdown_cv.notify_all();
+}
 
 static void show_usage(const std::string &name)
 {
@@ -2096,7 +2344,13 @@ int main(int argc, char *argv[])
         }
     }
 
-    string action;
+    std::signal(SIGINT, handleSignal);
+    std::signal(SIGTERM, handleSignal);
+
+    {
+        const std::lock_guard<std::mutex> lock(db_mutex);
+        sqlite3_busy_timeout(db.connection().get(), 3000);
+    }
 
     ResetLabs();
 
@@ -2151,20 +2405,40 @@ int main(int argc, char *argv[])
 
     LOG_INFO << "Ready.";
 
-    while (m_runThread)
-    {
-        getline(cin, action);
-        transform(action.begin(), action.end(), action.begin(), ::toupper);
-        if (action == "EXIT")
+    std::thread consoleThread([]() {
+        std::string action;
+        while (m_runThread && std::getline(std::cin, action))
         {
-            m_runThread = false;
-            LOG_INFO << "Shutting down from command-line.";
+            std::transform(action.begin(), action.end(), action.begin(),
+                           [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+            if (action == "EXIT")
+            {
+                LOG_INFO << "Shutting down from command-line.";
+                m_runThread = false;
+                shutdown_cv.notify_all();
+                break;
+            }
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(250));
-        cout.flush();
+    });
+    consoleThread.detach();
+
+    {
+        std::unique_lock<std::mutex> lock(shutdown_mutex);
+        shutdown_cv.wait(lock, []() { return !m_runThread.load(); });
     }
 
     server.shutdown();
+
+    if (mgr != nullptr)
+    {
+        AMM::OperationalDescription od;
+        od.name("disconnect");
+        od.module_id(m_uuid);
+        mgr->WriteOperationalDescription(od);
+        mgr->Shutdown();
+        delete mgr;
+        mgr = nullptr;
+    }
 
     LOG_INFO << "Shutdown complete";
 
